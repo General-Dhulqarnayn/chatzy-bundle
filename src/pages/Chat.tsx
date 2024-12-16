@@ -1,218 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { useMatchmaking } from "@/hooks/useMatchmaking";
+import { useMessages } from "@/hooks/useMessages";
 
 const Chat = () => {
   const { roomId } = useParams();
   const { session } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [isMatched, setIsMatched] = useState(false);
+  
+  const { isMatched } = useMatchmaking(roomId!, session?.user?.id);
+  const { messages, sendMessage } = useMessages(roomId!);
 
-  useEffect(() => {
-    const setupMatchmaking = async () => {
-      if (session?.user?.id) {
-        try {
-          // First, ensure user exists in public.users table
-          const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('id', session.user.id)
-            .single();
-
-          if (!existingUser) {
-            // Create user entry if it doesn't exist
-            await supabase
-              .from('users')
-              .insert([{ 
-                id: session.user.id,
-                email: session.user.email 
-              }]);
-          }
-
-          // Clean up any existing waiting room entries
-          await supabase
-            .from('waiting_room')
-            .delete()
-            .eq('user_id', session.user.id);
-
-          // Now safely add to waiting room
-          const { error: waitingError } = await supabase
-            .from('waiting_room')
-            .insert([{ user_id: session.user.id }]);
-
-          if (waitingError) {
-            console.error('Error joining waiting room:', waitingError);
-            toast.error("Failed to join waiting room");
-            return;
-          }
-
-          // Start looking for matches
-          const { data: waitingUsers } = await supabase
-            .from('waiting_room')
-            .select('user_id')
-            .neq('user_id', session.user.id)
-            .limit(1)
-            .single();
-
-          if (waitingUsers) {
-            // Found a match! Update chat room with both participants
-            const { error: updateError } = await supabase
-              .from('chat_rooms')
-              .update({ 
-                participants: [session.user.id, waitingUsers.user_id] 
-              })
-              .eq('id', roomId);
-
-            if (updateError) {
-              console.error('Error updating chat room:', updateError);
-              return;
-            }
-
-            // Remove both users from waiting room
-            await supabase
-              .from('waiting_room')
-              .delete()
-              .in('user_id', [session.user.id, waitingUsers.user_id]);
-
-            setIsMatched(true);
-            toast.success("Match found! You can now start chatting.");
-          } else {
-            toast("Looking for someone to chat with...");
-          }
-        } catch (error) {
-          console.error('Error in matchmaking setup:', error);
-          toast.error("Failed to set up matchmaking");
-        }
-      }
-    };
-
-    setupMatchmaking();
-
-    // Subscribe to chat room changes to detect when someone joins
-    const roomChannel = supabase
-      .channel(`room-${roomId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chat_rooms',
-          filter: `id=eq.${roomId}`
-        },
-        (payload) => {
-          if (payload.new.participants?.length >= 2) {
-            setIsMatched(true);
-            toast.success("Match found! You can now start chatting.");
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to waiting room changes to continuously look for matches
-    const waitingChannel = supabase
-      .channel('waiting_room')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'waiting_room'
-        },
-        async () => {
-          if (session?.user?.id && !isMatched) {
-            const { data: waitingUsers } = await supabase
-              .from('waiting_room')
-              .select('user_id')
-              .neq('user_id', session.user.id)
-              .limit(1)
-              .single();
-
-            if (waitingUsers) {
-              await supabase
-                .from('chat_rooms')
-                .update({ 
-                  participants: [session.user.id, waitingUsers.user_id] 
-                })
-                .eq('id', roomId);
-
-              await supabase
-                .from('waiting_room')
-                .delete()
-                .in('user_id', [session.user.id, waitingUsers.user_id]);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    // Load existing messages
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_room_id', roomId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error loading messages:', error);
-        toast.error("Failed to load messages");
-        return;
-      }
-
-      setMessages(data || []);
-    };
-
-    loadMessages();
-
-    // Subscribe to new messages
-    const messageChannel = supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `chat_room_id=eq.${roomId}`
-        },
-        (payload) => {
-          setMessages(current => [...current, payload.new]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(roomChannel);
-      supabase.removeChannel(waitingChannel);
-      supabase.removeChannel(messageChannel);
-    };
-  }, [roomId, session, isMatched]);
-
-  const sendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !isMatched) return;
-
-    const { error } = await supabase
-      .from('messages')
-      .insert([
-        {
-          content: newMessage,
-          chat_room_id: roomId,
-          user_id: session?.user?.id
-        }
-      ]);
-
-    if (error) {
-      console.error('Error sending message:', error);
-      toast.error("Failed to send message");
-      return;
-    }
-
+    await sendMessage(newMessage, session?.user?.id);
     setNewMessage("");
   };
 
@@ -249,7 +54,7 @@ const Chat = () => {
               </div>
             ))}
           </div>
-          <form onSubmit={sendMessage} className="p-4 border-t flex gap-2">
+          <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
