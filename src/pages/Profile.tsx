@@ -4,24 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { session, isLoading } = useAuth();
-  const { toast } = useToast();
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error signing out",
+      toast.error("Error signing out", {
         description: error.message,
       });
     } else {
-      toast({
-        title: "Signed out successfully",
-      });
+      toast.success("Signed out successfully");
     }
   };
 

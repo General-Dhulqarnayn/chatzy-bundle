@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type AuthContextType = {
   session: Session | null;
@@ -28,6 +29,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsLoading(false);
+      if (!session) {
+        navigate("/profile");
+      }
     });
 
     // Listen for auth changes
@@ -36,10 +40,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setIsLoading(false);
+      if (!session) {
+        toast("You have been signed out");
+        navigate("/profile");
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   return (
     <AuthContext.Provider value={{ session, isLoading }}>
