@@ -107,11 +107,14 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         },
         (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room updated:', payload);
-          const participants = payload.new?.participants || [];
-          if (participants.includes(userId)) {
-            setIsMatched(true);
-            setIsSearching(false);
-            toast.success("Match found! You can now start chatting.");
+          // Check if new data exists and has participants
+          if (payload.new && 'participants' in payload.new) {
+            const participants = payload.new.participants;
+            if (participants.includes(userId)) {
+              setIsMatched(true);
+              setIsSearching(false);
+              toast.success("Match found! You can now start chatting.");
+            }
           }
         }
       )
@@ -120,16 +123,17 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
     return () => {
       // Cleanup: remove from waiting room and unsubscribe from channel
       if (userId) {
-        void supabase
-          .from('waiting_room')
-          .delete()
-          .eq('user_id', userId)
-          .then(() => {
-            console.log('Cleaned up waiting room entry');
-          })
-          .catch((error) => {
-            console.error('Error cleaning up waiting room:', error);
-          });
+        // Use Promise.prototype.catch() for proper error handling
+        Promise.resolve(
+          supabase
+            .from('waiting_room')
+            .delete()
+            .eq('user_id', userId)
+        ).then(() => {
+          console.log('Cleaned up waiting room entry');
+        }).catch((error) => {
+          console.error('Error cleaning up waiting room:', error);
+        });
       }
       supabase.removeChannel(roomChannel);
     };
