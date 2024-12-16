@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { MessageSquare, User, Settings } from "lucide-react";
+import { MessageCircle, User, Settings } from "lucide-react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -13,30 +13,45 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center justify-center h-16 gap-8">
             <Link
               to="/"
-              className={`flex flex-col items-center transition-colors hover:text-primary ${
-                isActive("/") ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center transition-all group ${
+                isActive("/") 
+                  ? "text-primary scale-110" 
+                  : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <MessageSquare className="h-5 w-5" />
-              <span className="text-xs">Chat</span>
+              <MessageCircle 
+                className="h-6 w-6 group-hover:scale-110 transition-transform" 
+                strokeWidth={isActive("/") ? 2.5 : 1.5} 
+              />
+              <span className="text-xs mt-1 font-semibold">Chat</span>
             </Link>
             <Link
               to="/profile"
-              className={`flex flex-col items-center transition-colors hover:text-primary ${
-                isActive("/profile") ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center transition-all group ${
+                isActive("/profile") 
+                  ? "text-primary scale-110" 
+                  : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <User className="h-5 w-5" />
-              <span className="text-xs">Profile</span>
+              <User 
+                className="h-6 w-6 group-hover:scale-110 transition-transform" 
+                strokeWidth={isActive("/profile") ? 2.5 : 1.5} 
+              />
+              <span className="text-xs mt-1 font-semibold">Profile</span>
             </Link>
             <Link
               to="/settings"
-              className={`flex flex-col items-center transition-colors hover:text-primary ${
-                isActive("/settings") ? "text-primary" : "text-muted-foreground"
+              className={`flex flex-col items-center transition-all group ${
+                isActive("/settings") 
+                  ? "text-primary scale-110" 
+                  : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <Settings className="h-5 w-5" />
-              <span className="text-xs">Settings</span>
+              <Settings 
+                className="h-6 w-6 group-hover:scale-110 transition-transform" 
+                strokeWidth={isActive("/settings") ? 2.5 : 1.5} 
+              />
+              <span className="text-xs mt-1 font-semibold">Settings</span>
             </Link>
           </div>
         </div>
