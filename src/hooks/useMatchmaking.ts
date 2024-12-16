@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
+
+type ChatRoom = Database['public']['Tables']['chat_rooms']['Row'];
 
 export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   const [isMatched, setIsMatched] = useState(false);
@@ -101,7 +105,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           table: 'chat_rooms',
           filter: `id=eq.${roomId}`
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room updated:', payload);
           const participants = payload.new?.participants || [];
           if (participants.includes(userId)) {
@@ -116,14 +120,16 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
     return () => {
       // Cleanup: remove from waiting room and unsubscribe from channel
       if (userId) {
-        supabase
+        void supabase
           .from('waiting_room')
           .delete()
           .eq('user_id', userId)
           .then(() => {
             console.log('Cleaned up waiting room entry');
           })
-          .catch(console.error);
+          .catch((error) => {
+            console.error('Error cleaning up waiting room:', error);
+          });
       }
       supabase.removeChannel(roomChannel);
     };
