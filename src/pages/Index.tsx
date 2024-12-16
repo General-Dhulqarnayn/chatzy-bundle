@@ -11,18 +11,18 @@ const Index = () => {
 
   const handleStartChat = async () => {
     try {
-      // If not logged in, create a temporary entry in waiting room
       if (!session) {
-        const tempId = crypto.randomUUID();
-        // Add directly to waiting room with temporary ID
-        const { error: waitingError } = await supabase
-          .from('waiting_room')
-          .insert([{ user_id: tempId }]);
+        // For guest users, we'll create a chat room directly
+        const { data: room, error: roomError } = await supabase
+          .from('chat_rooms')
+          .insert([{ participants: [] }])
+          .select()
+          .single();
 
-        if (waitingError) throw waitingError;
+        if (roomError) throw roomError;
 
-        // Start listening for matches
-        listenForMatch(tempId);
+        // Navigate directly to the chat room
+        navigate(`/chat/${room.id}`);
       } else {
         // Add authenticated user to waiting room
         const { error: waitingError } = await supabase
@@ -33,9 +33,8 @@ const Index = () => {
 
         // Start listening for matches
         listenForMatch(session.user.id);
+        toast("Looking for someone to chat with...");
       }
-
-      toast("Looking for someone to chat with...");
     } catch (error) {
       console.error('Error starting chat:', error);
       toast.error("Failed to start chat. Please try again.");
