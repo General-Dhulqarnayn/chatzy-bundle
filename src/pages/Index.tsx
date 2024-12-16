@@ -1,11 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Button } from "@/components/ui/button";
+import { MessageSquare } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="flex min-h-[80vh] flex-col items-center justify-center">
+      <div className="text-center space-y-6">
+        <h1 className="text-4xl font-bold tracking-tight slide-up">
+          Start a New Chat
+        </h1>
+        <p className="text-muted-foreground max-w-md mx-auto slide-up animation-delay-100">
+          Connect with someone new and start a conversation. It's that simple.
+        </p>
+        <Button
+          size="lg"
+          className="slide-up animation-delay-200 glass hover:bg-primary/90"
+        >
+          <MessageSquare className="mr-2 h-5 w-5" />
+          Find New Chat
+        </Button>
       </div>
     </div>
   );
