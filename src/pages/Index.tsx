@@ -13,9 +13,10 @@ const Index = () => {
     try {
       // If not logged in, create a temporary user
       if (!session) {
+        // Generate a UUID for the new user
         const { data: tempUser, error: userError } = await supabase
           .from('users')
-          .insert([{}])
+          .insert([{ id: crypto.randomUUID() }])
           .select()
           .single();
 
