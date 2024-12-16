@@ -35,6 +35,11 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
             setIsSearching(false);
             return;
           }
+
+          // If user is the only participant, keep searching
+          if (room.participants.includes(userId) && room.participants.length === 1) {
+            setIsSearching(true);
+          }
         }
 
         // Clean up any existing waiting room entries
@@ -43,55 +48,57 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           .delete()
           .eq('user_id', userId);
 
-        setIsSearching(true);
-        toast("Looking for someone to chat with...");
+        if (!isMatched) {
+          setIsSearching(true);
+          toast("Looking for someone to chat with...");
 
-        // Add to waiting room
-        const { error: waitingError } = await supabase
-          .from('waiting_room')
-          .insert([{ user_id: userId }]);
+          // Add to waiting room
+          const { error: waitingError } = await supabase
+            .from('waiting_room')
+            .insert([{ user_id: userId }]);
 
-        if (waitingError) {
-          console.error('Error joining waiting room:', waitingError);
-          toast.error("Failed to join waiting room");
-          return;
-        }
-
-        // Start looking for matches
-        const { data: waitingUsers, error: matchError } = await supabase
-          .from('waiting_room')
-          .select('user_id')
-          .neq('user_id', userId)
-          .limit(1);
-
-        if (matchError) {
-          console.error('Error finding match:', matchError);
-          return;
-        }
-
-        if (waitingUsers && waitingUsers.length > 0) {
-          // Found a match! Update chat room with both participants
-          const { error: updateError } = await supabase
-            .from('chat_rooms')
-            .update({ 
-              participants: [userId, waitingUsers[0].user_id] 
-            })
-            .eq('id', roomId);
-
-          if (updateError) {
-            console.error('Error updating chat room:', updateError);
+          if (waitingError) {
+            console.error('Error joining waiting room:', waitingError);
+            toast.error("Failed to join waiting room");
             return;
           }
 
-          // Remove both users from waiting room
-          await supabase
+          // Start looking for matches
+          const { data: waitingUsers, error: matchError } = await supabase
             .from('waiting_room')
-            .delete()
-            .in('user_id', [userId, waitingUsers[0].user_id]);
+            .select('user_id')
+            .neq('user_id', userId)
+            .limit(1);
 
-          setIsMatched(true);
-          setIsSearching(false);
-          toast.success("Match found! You can now start chatting.");
+          if (matchError) {
+            console.error('Error finding match:', matchError);
+            return;
+          }
+
+          if (waitingUsers && waitingUsers.length > 0) {
+            // Found a match! Update chat room with both participants
+            const { error: updateError } = await supabase
+              .from('chat_rooms')
+              .update({ 
+                participants: [userId, waitingUsers[0].user_id] 
+              })
+              .eq('id', roomId);
+
+            if (updateError) {
+              console.error('Error updating chat room:', updateError);
+              return;
+            }
+
+            // Remove both users from waiting room
+            await supabase
+              .from('waiting_room')
+              .delete()
+              .in('user_id', [userId, waitingUsers[0].user_id]);
+
+            setIsMatched(true);
+            setIsSearching(false);
+            toast.success("Match found! You can now start chatting.");
+          }
         }
       } catch (error) {
         console.error('Error in matchmaking setup:', error);
@@ -116,7 +123,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           console.log('Room updated:', payload);
           const newData = payload.new as ChatRoom;
           if (newData && Array.isArray(newData.participants)) {
-            if (newData.participants.includes(userId)) {
+            if (newData.participants.includes(userId) && newData.participants.length === 2) {
               setIsMatched(true);
               setIsSearching(false);
               toast.success("Match found! You can now start chatting.");
@@ -142,7 +149,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       }
       supabase.removeChannel(roomChannel);
     };
-  }, [roomId, userId]);
+  }, [roomId, userId, isMatched]);
 
   return { isMatched, isSearching };
 };
