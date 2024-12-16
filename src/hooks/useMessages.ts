@@ -6,6 +6,8 @@ export const useMessages = (roomId: string) => {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
+    console.log('Initializing messages for room:', roomId);
+    
     // Load existing messages
     const loadMessages = async () => {
       const { data, error } = await supabase
@@ -20,6 +22,7 @@ export const useMessages = (roomId: string) => {
         return;
       }
 
+      console.log('Loaded messages:', data?.length || 0);
       setMessages(data || []);
     };
 
@@ -41,15 +44,23 @@ export const useMessages = (roomId: string) => {
           setMessages(current => [...current, payload.new]);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Message subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up message subscription');
       supabase.removeChannel(channel);
     };
   }, [roomId]);
 
   const sendMessage = async (content: string, userId: string | undefined) => {
-    if (!content.trim() || !userId) return;
+    if (!content.trim() || !userId) {
+      console.log('Invalid message or missing user ID');
+      return;
+    }
+
+    console.log('Sending message:', { content, userId, roomId });
 
     try {
       const newMessage = {
@@ -76,6 +87,8 @@ export const useMessages = (roomId: string) => {
         toast.error("Failed to send message");
         // Remove the optimistically added message if there was an error
         setMessages(current => current.filter(msg => msg.id !== newMessage.id));
+      } else {
+        console.log('Message sent successfully');
       }
     } catch (error) {
       console.error('Error sending message:', error);
