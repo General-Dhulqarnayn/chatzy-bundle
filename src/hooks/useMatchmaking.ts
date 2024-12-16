@@ -11,7 +11,7 @@ type ChatRoom = Database['public']['Tables']['chat_rooms']['Row'];
 export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   const [isMatched, setIsMatched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const { checkExistingRoom, addFirstParticipant } = useRoomManagement();
+  const { addFirstParticipant } = useRoomManagement();
   const { joinWaitingRoom, findMatch, removeFromWaitingRoom } = useWaitingRoom();
 
   // Function to check if room is matched
@@ -24,11 +24,13 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       .eq('id', roomId)
       .single();
 
-    if (room && Array.isArray(room.participants)) {
+    console.log('Room status:', room);
+
+    if (room?.participants && Array.isArray(room.participants)) {
       const isUserInRoom = room.participants.includes(userId);
       const hasTwoParticipants = room.participants.length === 2;
 
-      console.log('Room status check:', {
+      console.log('Room check:', {
         roomId,
         participants: room.participants,
         isUserInRoom,
@@ -43,51 +45,82 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   };
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !roomId) return;
 
-    const setupMatchmaking = async () => {
-      try {
-        // Initial room check
-        const room = await checkExistingRoom(roomId, userId);
-        if (!room) return;
+    const initializeRoom = async () => {
+      console.log('Initializing room:', { roomId, userId });
+      
+      // Get current room state
+      const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('participants')
+        .eq('id', roomId)
+        .single();
 
-        // If room is already matched and user is participant, set matched state
-        if (room.participants.length === 2 && room.participants.includes(userId)) {
+      console.log('Initial room state:', room);
+
+      if (!room) {
+        console.error('Room not found');
+        return;
+      }
+
+      // If room is already matched, just set the state
+      if (room.participants.length === 2) {
+        if (room.participants.includes(userId)) {
           setIsMatched(true);
           setIsSearching(false);
-          return;
         }
+        return;
+      }
 
-        // Start searching process
+      // If room is empty, start matchmaking process
+      if (room.participants.length === 0) {
         setIsSearching(true);
-
-        // If room is empty, add as first participant
-        if (room.participants.length === 0) {
+        
+        try {
+          // Add first participant
           await addFirstParticipant(roomId, userId);
-          await removeFromWaitingRoom([userId]);
-          toast("Looking for someone to chat with...");
-          await joinWaitingRoom(userId);
+          console.log('Added first participant');
           
+          // Remove from waiting room if present
+          await removeFromWaitingRoom([userId]);
+          
+          // Join waiting room
+          await joinWaitingRoom(userId);
+          console.log('Joined waiting room');
+          
+          toast("Looking for someone to chat with...");
+          
+          // Look for a match
           const matchedUser = await findMatch(userId);
+          console.log('Found match:', matchedUser);
+          
           if (matchedUser) {
-            await supabase
+            // Update room with both participants
+            const { error: updateError } = await supabase
               .from('chat_rooms')
               .update({ participants: [userId, matchedUser.user_id] })
               .eq('id', roomId);
 
+            if (updateError) {
+              console.error('Error updating room:', updateError);
+              return;
+            }
+
+            // Clean up waiting room
             await removeFromWaitingRoom([userId, matchedUser.user_id]);
-            await checkRoomStatus(); // Check room status after update
+            
+            // Check final room status
+            await checkRoomStatus();
           }
+        } catch (error) {
+          console.error('Error in matchmaking:', error);
+          toast.error("Failed to set up matchmaking");
         }
-      } catch (error) {
-        console.error('Error in matchmaking setup:', error);
-        toast.error("Failed to set up matchmaking");
       }
     };
 
-    setupMatchmaking();
-
-    // Subscribe to room changes
+    // Set up real-time subscription
     const channel = supabase
       .channel(`room-${roomId}`)
       .on(
@@ -100,11 +133,14 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         },
         async (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room update received:', payload);
-          await checkRoomStatus(); // Check room status on every update
+          await checkRoomStatus();
         }
       )
       .subscribe();
 
+    // Initialize room
+    initializeRoom();
+    
     // Initial room status check
     checkRoomStatus();
 
