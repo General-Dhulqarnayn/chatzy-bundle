@@ -10,6 +10,20 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
 
     const setupMatchmaking = async () => {
       try {
+        // First, check if the room already has participants
+        const { data: room } = await supabase
+          .from('chat_rooms')
+          .select('participants')
+          .eq('id', roomId)
+          .single();
+
+        if (room?.participants?.length === 2) {
+          if (room.participants.includes(userId)) {
+            setIsMatched(true);
+            return;
+          }
+        }
+
         // Clean up any existing waiting room entries
         await supabase
           .from('waiting_room')
@@ -84,7 +98,8 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           filter: `id=eq.${roomId}`
         },
         (payload) => {
-          if (payload.new.participants?.length >= 2) {
+          console.log('Room updated:', payload);
+          if (payload.new.participants?.includes(userId)) {
             setIsMatched(true);
             toast.success("Match found! You can now start chatting.");
           }
@@ -92,47 +107,10 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       )
       .subscribe();
 
-    // Subscribe to waiting room changes
-    const waitingChannel = supabase
-      .channel('waiting_room')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'waiting_room'
-        },
-        async () => {
-          if (userId && !isMatched) {
-            const { data: waitingUsers, error: matchError } = await supabase
-              .from('waiting_room')
-              .select('user_id')
-              .neq('user_id', userId)
-              .limit(1);
-
-            if (matchError || !waitingUsers?.length) return;
-
-            await supabase
-              .from('chat_rooms')
-              .update({ 
-                participants: [userId, waitingUsers[0].user_id] 
-              })
-              .eq('id', roomId);
-
-            await supabase
-              .from('waiting_room')
-              .delete()
-              .in('user_id', [userId, waitingUsers[0].user_id]);
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
       supabase.removeChannel(roomChannel);
-      supabase.removeChannel(waitingChannel);
     };
-  }, [roomId, userId, isMatched]);
+  }, [roomId, userId]);
 
   return { isMatched };
 };

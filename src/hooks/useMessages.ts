@@ -26,8 +26,8 @@ export const useMessages = (roomId: string) => {
     loadMessages();
 
     // Subscribe to new messages
-    const messageChannel = supabase
-      .channel('chat-messages')
+    const channel = supabase
+      .channel(`room-${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -37,30 +37,36 @@ export const useMessages = (roomId: string) => {
           filter: `chat_room_id=eq.${roomId}`
         },
         (payload) => {
+          console.log('New message received:', payload);
           setMessages(current => [...current, payload.new]);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(messageChannel);
+      supabase.removeChannel(channel);
     };
   }, [roomId]);
 
   const sendMessage = async (content: string, userId: string | undefined) => {
-    if (!content.trim()) return;
+    if (!content.trim() || !userId) return;
 
-    const { error } = await supabase
-      .from('messages')
-      .insert([
-        {
-          content,
-          chat_room_id: roomId,
-          user_id: userId
-        }
-      ]);
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            content,
+            chat_room_id: roomId,
+            user_id: userId
+          }
+        ]);
 
-    if (error) {
+      if (error) {
+        console.error('Error sending message:', error);
+        toast.error("Failed to send message");
+      }
+    } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Failed to send message");
     }
