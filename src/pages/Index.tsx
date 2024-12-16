@@ -12,12 +12,19 @@ const Index = () => {
   const location = useLocation();
 
   // Check if we're coming from a chat route
-  const isFromChat = location.state?.from?.includes('/chat/');
-  const previousChatId = isFromChat ? location.state.from.split('/chat/')[1] : null;
+  const previousChatId = location.state?.from?.split('/chat/')?.[1];
+
+  useEffect(() => {
+    // If user was in a chat and didn't explicitly choose to start a new one,
+    // redirect them back to their chat
+    if (previousChatId) {
+      navigate(`/chat/${previousChatId}`);
+    }
+  }, [previousChatId, navigate]);
 
   const handleStartChat = async () => {
     try {
-      // Create a new chat room for all users
+      // Create a new chat room
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert([{ participants: [] }])
@@ -28,20 +35,13 @@ const Index = () => {
       if (!room) throw new Error('No room created');
 
       // Navigate to the chat room where matchmaking will happen
-      navigate(`/chat/${room.id}`);
+      // Clear the previous chat state by not passing location state
+      navigate(`/chat/${room.id}`, { replace: true });
     } catch (error) {
       console.error('Error starting chat:', error);
       toast.error("Failed to start chat. Please try again.");
     }
   };
-
-  // If user was in a chat and didn't explicitly choose to start a new one,
-  // redirect them back to their chat
-  useEffect(() => {
-    if (previousChatId) {
-      navigate(`/chat/${previousChatId}`);
-    }
-  }, [previousChatId, navigate]);
 
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center">
