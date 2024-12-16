@@ -8,19 +8,36 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
   const navigate = useNavigate();
 
   const checkRoomStatus = async () => {
-    if (!userId) return false;
+    if (!userId) {
+      console.log('No user ID provided for room status check');
+      return false;
+    }
     
-    const { data: room } = await supabase
+    const { data: room, error } = await supabase
       .from('chat_rooms')
       .select('participants')
       .eq('id', roomId)
       .single();
 
+    if (error) {
+      console.error('Error checking room status:', error);
+      return false;
+    }
+
     console.log('Room status check:', { room, userId });
 
-    if (room?.participants && Array.isArray(room.participants)) {
+    if (!room) {
+      console.log('Room not found');
+      toast.error("Chat room not found");
+      navigate('/');
+      return false;
+    }
+
+    if (room.participants && Array.isArray(room.participants)) {
       const isUserInRoom = room.participants.includes(userId);
       const hasTwoParticipants = room.participants.length === 2;
+
+      console.log('Room status:', { isUserInRoom, hasTwoParticipants });
 
       if (isUserInRoom && hasTwoParticipants) {
         setIsMatched(true);
@@ -28,8 +45,9 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
       }
 
       if (hasTwoParticipants && !isUserInRoom) {
-        navigate('/');
+        console.log('Room is full and user is not a participant');
         toast.error("This room is full");
+        navigate('/');
         return false;
       }
     }
@@ -39,26 +57,32 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
   useEffect(() => {
     if (!userId || !roomId) return;
 
+    console.log('Setting up room status subscription:', { roomId, userId });
+
     const channel = supabase
       .channel(`room-${roomId}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'chat_rooms',
           filter: `id=eq.${roomId}`
         },
-        async () => {
+        async (payload) => {
+          console.log('Room update received:', payload);
           await checkRoomStatus();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Room subscription status:', status);
+      });
 
     // Initial check
     checkRoomStatus();
 
     return () => {
+      console.log('Cleaning up room status subscription');
       supabase.removeChannel(channel);
     };
   }, [roomId, userId]);

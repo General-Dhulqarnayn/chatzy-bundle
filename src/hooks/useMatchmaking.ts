@@ -10,7 +10,10 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   const { removeFromWaitingRoom } = useWaitingRoom();
 
   useEffect(() => {
-    if (!userId || !roomId) return;
+    if (!userId || !roomId) {
+      console.log('Missing required data for matchmaking:', { userId, roomId });
+      return;
+    }
 
     const initializeMatchmaking = async () => {
       console.log('Initializing matchmaking:', { roomId, userId });
