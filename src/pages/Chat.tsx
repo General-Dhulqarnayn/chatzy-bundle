@@ -51,7 +51,39 @@ const Chat = () => {
             return;
           }
 
-          toast("Looking for someone to chat with...");
+          // Start looking for matches
+          const { data: waitingUsers } = await supabase
+            .from('waiting_room')
+            .select('user_id')
+            .neq('user_id', session.user.id)
+            .limit(1)
+            .single();
+
+          if (waitingUsers) {
+            // Found a match! Update chat room with both participants
+            const { error: updateError } = await supabase
+              .from('chat_rooms')
+              .update({ 
+                participants: [session.user.id, waitingUsers.user_id] 
+              })
+              .eq('id', roomId);
+
+            if (updateError) {
+              console.error('Error updating chat room:', updateError);
+              return;
+            }
+
+            // Remove both users from waiting room
+            await supabase
+              .from('waiting_room')
+              .delete()
+              .in('user_id', [session.user.id, waitingUsers.user_id]);
+
+            setIsMatched(true);
+            toast.success("Match found! You can now start chatting.");
+          } else {
+            toast("Looking for someone to chat with...");
+          }
         } catch (error) {
           console.error('Error in matchmaking setup:', error);
           toast.error("Failed to set up matchmaking");
@@ -76,6 +108,43 @@ const Chat = () => {
           if (payload.new.participants?.length >= 2) {
             setIsMatched(true);
             toast.success("Match found! You can now start chatting.");
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to waiting room changes to continuously look for matches
+    const waitingChannel = supabase
+      .channel('waiting_room')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waiting_room'
+        },
+        async () => {
+          if (session?.user?.id && !isMatched) {
+            const { data: waitingUsers } = await supabase
+              .from('waiting_room')
+              .select('user_id')
+              .neq('user_id', session.user.id)
+              .limit(1)
+              .single();
+
+            if (waitingUsers) {
+              await supabase
+                .from('chat_rooms')
+                .update({ 
+                  participants: [session.user.id, waitingUsers.user_id] 
+                })
+                .eq('id', roomId);
+
+              await supabase
+                .from('waiting_room')
+                .delete()
+                .in('user_id', [session.user.id, waitingUsers.user_id]);
+            }
           }
         }
       )
@@ -119,9 +188,10 @@ const Chat = () => {
 
     return () => {
       supabase.removeChannel(roomChannel);
+      supabase.removeChannel(waitingChannel);
       supabase.removeChannel(messageChannel);
     };
-  }, [roomId, session]);
+  }, [roomId, session, isMatched]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
