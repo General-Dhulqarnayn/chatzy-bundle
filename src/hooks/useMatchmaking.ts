@@ -5,6 +5,7 @@ import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { useRoomManagement } from "./chat/useRoomManagement";
 import { useWaitingRoom } from "./chat/useWaitingRoom";
+import { useNavigate } from "react-router-dom";
 
 type ChatRoom = Database['public']['Tables']['chat_rooms']['Row'];
 
@@ -13,6 +14,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   const [isSearching, setIsSearching] = useState(false);
   const { addFirstParticipant } = useRoomManagement();
   const { joinWaitingRoom, findMatch, removeFromWaitingRoom } = useWaitingRoom();
+  const navigate = useNavigate();
 
   // Function to check if room is matched
   const checkRoomStatus = async () => {
@@ -69,18 +71,43 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         if (room.participants.includes(userId)) {
           setIsMatched(true);
           setIsSearching(false);
+        } else {
+          // If room is full and user is not in it, redirect them to create a new room
+          navigate('/');
+          toast.error("This room is full");
         }
         return;
       }
 
-      // If room is empty, start matchmaking process
-      if (room.participants.length === 0) {
+      // If room has one participant and it's not the current user, join this room
+      if (room.participants.length === 1 && !room.participants.includes(userId)) {
+        try {
+          const { error: updateError } = await supabase
+            .from('chat_rooms')
+            .update({ participants: [...room.participants, userId] })
+            .eq('id', roomId);
+
+          if (updateError) throw updateError;
+          
+          await checkRoomStatus();
+          return;
+        } catch (error) {
+          console.error('Error joining room:', error);
+          toast.error("Failed to join room");
+          return;
+        }
+      }
+
+      // If room is empty or user is the only participant, start matchmaking process
+      if (room.participants.length === 0 || (room.participants.length === 1 && room.participants.includes(userId))) {
         setIsSearching(true);
         
         try {
-          // Add first participant
-          await addFirstParticipant(roomId, userId);
-          console.log('Added first participant');
+          // Add first participant if room is empty
+          if (room.participants.length === 0) {
+            await addFirstParticipant(roomId, userId);
+            console.log('Added first participant');
+          }
           
           // Remove from waiting room if present
           await removeFromWaitingRoom([userId]);
