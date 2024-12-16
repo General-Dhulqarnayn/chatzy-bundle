@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,13 +23,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsLoading(false);
-      if (!session) {
+      // Only redirect to profile if trying to access protected routes without auth
+      if (!session && location.pathname !== "/" && location.pathname !== "/profile") {
         navigate("/profile");
       }
     });
@@ -40,14 +42,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setIsLoading(false);
-      if (!session) {
+      if (!session && location.pathname !== "/" && location.pathname !== "/profile") {
         toast("You have been signed out");
         navigate("/profile");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   return (
     <AuthContext.Provider value={{ session, isLoading }}>
