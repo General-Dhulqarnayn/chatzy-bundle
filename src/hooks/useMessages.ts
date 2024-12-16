@@ -10,6 +10,7 @@ export const useMessages = (roomId: string) => {
     
     // Load existing messages
     const loadMessages = async () => {
+      console.log('Loading messages for room:', roomId);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -29,8 +30,9 @@ export const useMessages = (roomId: string) => {
     loadMessages();
 
     // Subscribe to new messages
+    console.log('Setting up message subscription for room:', roomId);
     const channel = supabase
-      .channel(`room-${roomId}`)
+      .channel(`messages-${roomId}`)
       .on(
         'postgres_changes',
         {
