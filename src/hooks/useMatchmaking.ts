@@ -22,8 +22,15 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           .eq('id', roomId)
           .single();
 
-        if (room?.participants?.length === 2) {
-          if (room.participants.includes(userId)) {
+        if (room?.participants) {
+          // If room already has 2 participants and user is not one of them, show error
+          if (room.participants.length >= 2 && !room.participants.includes(userId)) {
+            toast.error("This room is full");
+            return;
+          }
+          
+          // If user is already in the room with another participant
+          if (room.participants.includes(userId) && room.participants.length === 2) {
             setIsMatched(true);
             setIsSearching(false);
             return;
