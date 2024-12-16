@@ -26,29 +26,65 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   useEffect(() => {
+    console.log("Setting up auth state...");
+    
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false);
-      // Only redirect to profile if trying to access protected routes without auth
-      if (!session && location.pathname !== "/" && location.pathname !== "/profile") {
-        navigate("/profile");
+    const setupAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          // Clear any invalid session state
+          await supabase.auth.signOut();
+          setSession(null);
+        } else {
+          console.log("Initial session:", data.session);
+          setSession(data.session);
+        }
+        
+        // Only redirect to profile if trying to access protected routes without auth
+        if (!data.session && location.pathname !== "/" && location.pathname !== "/profile") {
+          navigate("/profile");
+        }
+      } catch (err) {
+        console.error("Error in auth setup:", err);
+        setSession(null);
+      } finally {
+        setIsLoading(false);
       }
-    });
+    };
+
+    setupAuth();
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setIsLoading(false);
-      if (!session && location.pathname !== "/" && location.pathname !== "/profile") {
-        toast("You have been signed out");
-        navigate("/profile");
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log("Auth state changed:", event, currentSession);
+      
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token was refreshed successfully');
       }
+      
+      if (event === 'SIGNED_OUT') {
+        // Clear any remaining session data
+        setSession(null);
+        if (location.pathname !== "/" && location.pathname !== "/profile") {
+          toast("You have been signed out");
+          navigate("/profile");
+        }
+      } else {
+        setSession(currentSession);
+      }
+      
+      setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log("Cleaning up auth subscriptions");
+      subscription.unsubscribe();
+    };
   }, [navigate, location.pathname]);
 
   return (
