@@ -5,6 +5,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
+  
+  // Check if we're in a chat
+  const inChat = location.pathname.includes('/chat/');
+  const state = inChat ? { from: location.pathname } : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -13,6 +17,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center justify-center h-16 gap-8">
             <Link
               to="/"
+              state={state}
               className={`flex flex-col items-center transition-all group ${
                 isActive("/") 
                   ? "text-primary scale-110" 
@@ -27,6 +32,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </Link>
             <Link
               to="/profile"
+              state={state}
               className={`flex flex-col items-center transition-all group ${
                 isActive("/profile") 
                   ? "text-primary scale-110" 
@@ -41,6 +47,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </Link>
             <Link
               to="/settings"
+              state={state}
               className={`flex flex-col items-center transition-all group ${
                 isActive("/settings") 
                   ? "text-primary scale-110" 
