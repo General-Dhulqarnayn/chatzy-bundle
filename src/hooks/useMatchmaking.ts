@@ -100,15 +100,14 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all changes
+          event: 'UPDATE',
           schema: 'public',
           table: 'chat_rooms',
           filter: `id=eq.${roomId}`
         },
         (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room updated:', payload);
-          // Check if new data exists and has participants
-          if (payload.new && 'participants' in payload.new) {
+          if (payload.new && Array.isArray(payload.new.participants)) {
             const participants = payload.new.participants;
             if (participants.includes(userId)) {
               setIsMatched(true);
@@ -123,7 +122,6 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
     return () => {
       // Cleanup: remove from waiting room and unsubscribe from channel
       if (userId) {
-        // Use Promise.prototype.catch() for proper error handling
         Promise.resolve(
           supabase
             .from('waiting_room')
