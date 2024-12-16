@@ -12,29 +12,30 @@ const Index = () => {
   const handleStartChat = async () => {
     try {
       if (!session) {
-        // For guest users, we'll create a chat room directly
+        // For guest users, create a chat room directly and navigate to it
         const { data: room, error: roomError } = await supabase
           .from('chat_rooms')
           .insert([{ participants: [] }])
-          .select()
+          .select('id')
           .single();
 
         if (roomError) throw roomError;
+        if (!room) throw new Error('No room created');
 
-        // Navigate directly to the chat room
         navigate(`/chat/${room.id}`);
-      } else {
-        // Add authenticated user to waiting room
-        const { error: waitingError } = await supabase
-          .from('waiting_room')
-          .insert([{ user_id: session.user.id }]);
-
-        if (waitingError) throw waitingError;
-
-        // Start listening for matches
-        listenForMatch(session.user.id);
-        toast("Looking for someone to chat with...");
+        return; // Exit early for guest users
       }
+
+      // For authenticated users, add to waiting room
+      const { error: waitingError } = await supabase
+        .from('waiting_room')
+        .insert([{ user_id: session.user.id }]);
+
+      if (waitingError) throw waitingError;
+
+      // Start listening for matches
+      listenForMatch(session.user.id);
+      toast("Looking for someone to chat with...");
     } catch (error) {
       console.error('Error starting chat:', error);
       toast.error("Failed to start chat. Please try again.");
