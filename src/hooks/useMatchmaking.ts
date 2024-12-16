@@ -107,9 +107,9 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         },
         (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room updated:', payload);
-          if (payload.new && Array.isArray(payload.new.participants)) {
-            const participants = payload.new.participants;
-            if (participants.includes(userId)) {
+          const newData = payload.new as ChatRoom;
+          if (newData && Array.isArray(newData.participants)) {
+            if (newData.participants.includes(userId)) {
               setIsMatched(true);
               setIsSearching(false);
               toast.success("Match found! You can now start chatting.");
