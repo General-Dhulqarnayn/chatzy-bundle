@@ -11,26 +11,18 @@ const Index = () => {
 
   const handleStartChat = async () => {
     try {
-      // If not logged in, create a temporary user
+      // If not logged in, create a temporary entry in waiting room
       if (!session) {
-        // Generate a UUID for the new user
-        const { data: tempUser, error: userError } = await supabase
-          .from('users')
-          .insert([{ id: crypto.randomUUID() }])
-          .select()
-          .single();
-
-        if (userError) throw userError;
-
-        // Add user to waiting room
+        const tempId = crypto.randomUUID();
+        // Add directly to waiting room with temporary ID
         const { error: waitingError } = await supabase
           .from('waiting_room')
-          .insert([{ user_id: tempUser.id }]);
+          .insert([{ user_id: tempId }]);
 
         if (waitingError) throw waitingError;
 
         // Start listening for matches
-        listenForMatch(tempUser.id);
+        listenForMatch(tempId);
       } else {
         // Add authenticated user to waiting room
         const { error: waitingError } = await supabase
