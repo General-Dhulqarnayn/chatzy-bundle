@@ -40,6 +40,20 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           if (room.participants.includes(userId) && room.participants.length === 1) {
             setIsSearching(true);
           }
+
+          // If room is empty, add the current user as first participant
+          if (room.participants.length === 0) {
+            const { error: updateError } = await supabase
+              .from('chat_rooms')
+              .update({ participants: [userId] })
+              .eq('id', roomId);
+
+            if (updateError) {
+              console.error('Error updating chat room:', updateError);
+              return;
+            }
+            setIsSearching(true);
+          }
         }
 
         // Clean up any existing waiting room entries
