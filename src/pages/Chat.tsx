@@ -14,27 +14,48 @@ const Chat = () => {
   const [isMatched, setIsMatched] = useState(false);
 
   useEffect(() => {
-    // Add user to waiting room only if authenticated
     const setupMatchmaking = async () => {
       if (session?.user?.id) {
-        // Remove any existing entries for this user from waiting room
-        await supabase
-          .from('waiting_room')
-          .delete()
-          .eq('user_id', session.user.id);
+        try {
+          // First, ensure user exists in public.users table
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', session.user.id)
+            .single();
 
-        // Add user to waiting room
-        const { error: waitingError } = await supabase
-          .from('waiting_room')
-          .insert([{ user_id: session.user.id }]);
+          if (!existingUser) {
+            // Create user entry if it doesn't exist
+            await supabase
+              .from('users')
+              .insert([{ 
+                id: session.user.id,
+                email: session.user.email 
+              }]);
+          }
 
-        if (waitingError) {
-          console.error('Error joining waiting room:', waitingError);
-          toast.error("Failed to join waiting room");
-          return;
+          // Clean up any existing waiting room entries
+          await supabase
+            .from('waiting_room')
+            .delete()
+            .eq('user_id', session.user.id);
+
+          // Now safely add to waiting room
+          const { error: waitingError } = await supabase
+            .from('waiting_room')
+            .insert([{ user_id: session.user.id }]);
+
+          if (waitingError) {
+            console.error('Error joining waiting room:', waitingError);
+            toast.error("Failed to join waiting room");
+            return;
+          }
+
+          toast("Looking for someone to chat with...");
+        } catch (error) {
+          console.error('Error in matchmaking setup:', error);
+          toast.error("Failed to set up matchmaking");
         }
-
-        toast("Looking for someone to chat with...");
       }
     };
 
