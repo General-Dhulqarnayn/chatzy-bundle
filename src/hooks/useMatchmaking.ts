@@ -22,17 +22,23 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         const room = await checkExistingRoom(roomId, userId);
         if (!room) return;
 
+        // If user is already in a room with two participants, they're matched
         if (room.participants.includes(userId) && room.participants.length === 2) {
+          console.log('User is already in a matched room:', room);
           setIsMatched(true);
           setIsSearching(false);
           return;
         }
 
+        // If user is the only participant, they're searching
         if (room.participants.includes(userId) && room.participants.length === 1) {
+          console.log('User is the only participant, setting searching state');
           setIsSearching(true);
         }
 
+        // If room is empty, add the user as first participant
         if (room.participants.length === 0) {
+          console.log('Room is empty, adding user as first participant');
           await addFirstParticipant(roomId, userId);
           setIsSearching(true);
         }
@@ -48,6 +54,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           const matchedUser = await findMatch(userId);
 
           if (matchedUser) {
+            console.log('Found match:', matchedUser);
             const { error: updateError } = await supabase
               .from('chat_rooms')
               .update({ 
@@ -88,8 +95,17 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         (payload: RealtimePostgresChangesPayload<ChatRoom>) => {
           console.log('Room updated:', payload);
           const newData = payload.new as ChatRoom;
+          
           if (newData && Array.isArray(newData.participants)) {
-            if (newData.participants.includes(userId) && newData.participants.length === 2) {
+            // Check if the current user is in the participants array
+            const isUserParticipant = newData.participants.includes(userId);
+            const hasTwoParticipants = newData.participants.length === 2;
+
+            console.log('Is user participant:', isUserParticipant);
+            console.log('Has two participants:', hasTwoParticipants);
+
+            if (isUserParticipant && hasTwoParticipants) {
+              console.log('Setting matched state for user:', userId);
               setIsMatched(true);
               setIsSearching(false);
               toast.success("Match found! You can now start chatting.");
@@ -100,6 +116,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up matchmaking...');
       if (userId) {
         removeFromWaitingRoom([userId])
           .then(() => console.log('Cleaned up waiting room entry'))
@@ -107,7 +124,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       }
       supabase.removeChannel(roomChannel);
     };
-  }, [roomId, userId, isMatched]);
+  }, [roomId, userId]);
 
   return { isMatched, isSearching };
 };
