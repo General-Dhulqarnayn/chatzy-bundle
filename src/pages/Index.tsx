@@ -42,7 +42,7 @@ const Index = () => {
         </p>
         <Button
           size="lg"
-          className="slide-up animation-delay-200 glass hover:bg-primary/90"
+          className="slide-up animation-delay-200 bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={handleStartChat}
         >
           <MessageSquare className="mr-2 h-5 w-5" />
