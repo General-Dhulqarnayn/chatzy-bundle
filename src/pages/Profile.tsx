@@ -1,80 +1,81 @@
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
 
 const Profile = () => {
+  const { session, isLoading } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error signing out",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Signed out successfully",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="container max-w-md mx-auto pt-8">
+        <Card className="p-6 glass">
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: 'hsl(var(--primary))',
+                    brandAccent: 'hsl(var(--primary))',
+                  },
+                },
+              },
+            }}
+            providers={[]}
+          />
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto max-w-md pt-8">
-      <Tabs defaultValue="login" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="signup">Sign Up</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <Card className="glass">
-            <form className="space-y-4 p-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  className="glass"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  className="glass"
-                />
-              </div>
-              <Button className="w-full glass hover:bg-primary/90">
-                Login
-              </Button>
-            </form>
-          </Card>
-        </TabsContent>
-        <TabsContent value="signup">
-          <Card className="glass">
-            <form className="space-y-4 p-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter your name"
-                  className="glass"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  placeholder="Enter your email"
-                  className="glass"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  placeholder="Create a password"
-                  className="glass"
-                />
-              </div>
-              <Button className="w-full glass hover:bg-primary/90">
-                Sign Up
-              </Button>
-            </form>
-          </Card>
-        </TabsContent>
-      </Tabs>
+    <div className="container max-w-md mx-auto pt-8">
+      <Card className="p-6 glass">
+        <div className="space-y-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">Profile</h2>
+            <p className="text-muted-foreground">
+              Logged in as: {session.user.email}
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 };
