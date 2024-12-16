@@ -21,6 +21,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         if (room?.participants?.length === 2) {
           if (room.participants.includes(userId)) {
             setIsMatched(true);
+            setIsSearching(false);
             return;
           }
         }
@@ -95,14 +96,15 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // Listen to all changes
           schema: 'public',
           table: 'chat_rooms',
           filter: `id=eq.${roomId}`
         },
         (payload) => {
           console.log('Room updated:', payload);
-          if (payload.new.participants?.includes(userId)) {
+          const participants = payload.new?.participants || [];
+          if (participants.includes(userId)) {
             setIsMatched(true);
             setIsSearching(false);
             toast.success("Match found! You can now start chatting.");
@@ -112,6 +114,17 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
       .subscribe();
 
     return () => {
+      // Cleanup: remove from waiting room and unsubscribe from channel
+      if (userId) {
+        supabase
+          .from('waiting_room')
+          .delete()
+          .eq('user_id', userId)
+          .then(() => {
+            console.log('Cleaned up waiting room entry');
+          })
+          .catch(console.error);
+      }
       supabase.removeChannel(roomChannel);
     };
   }, [roomId, userId]);
