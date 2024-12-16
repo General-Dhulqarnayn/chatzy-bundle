@@ -11,62 +11,22 @@ const Index = () => {
 
   const handleStartChat = async () => {
     try {
-      if (!session) {
-        // For guest users, create a chat room directly and navigate to it
-        const { data: room, error: roomError } = await supabase
-          .from('chat_rooms')
-          .insert([{ participants: [] }])
-          .select('id')
-          .single();
+      // Create a new chat room for all users
+      const { data: room, error: roomError } = await supabase
+        .from('chat_rooms')
+        .insert([{ participants: [] }])
+        .select('id')
+        .single();
 
-        if (roomError) throw roomError;
-        if (!room) throw new Error('No room created');
+      if (roomError) throw roomError;
+      if (!room) throw new Error('No room created');
 
-        navigate(`/chat/${room.id}`);
-        return; // Exit early for guest users
-      }
-
-      // For authenticated users, add to waiting room
-      const { error: waitingError } = await supabase
-        .from('waiting_room')
-        .insert([{ user_id: session.user.id }]);
-
-      if (waitingError) throw waitingError;
-
-      // Start listening for matches
-      listenForMatch(session.user.id);
-      toast("Looking for someone to chat with...");
+      // Navigate to the chat room where matchmaking will happen
+      navigate(`/chat/${room.id}`);
     } catch (error) {
       console.error('Error starting chat:', error);
       toast.error("Failed to start chat. Please try again.");
     }
-  };
-
-  const listenForMatch = (userId: string) => {
-    const channel = supabase
-      .channel('chat-matching')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_rooms',
-          filter: `participants=cs.{${userId}}`
-        },
-        (payload) => {
-          console.log('Match found:', payload);
-          // Navigate to chat room when match is found
-          if (payload.new && payload.new.id) {
-            navigate(`/chat/${payload.new.id}`);
-          }
-        }
-      )
-      .subscribe();
-
-    // Clean up subscription when component unmounts
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   return (
@@ -86,7 +46,7 @@ const Index = () => {
           onClick={handleStartChat}
         >
           <MessageSquare className="mr-2 h-5 w-5" />
-          {session ? "Find New Chat" : "Try as Guest"}
+          Start Chatting
         </Button>
         {!session && (
           <p className="text-sm text-muted-foreground slide-up animation-delay-300">
