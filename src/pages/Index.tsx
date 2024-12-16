@@ -2,18 +2,78 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Index = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  const handleStartChat = () => {
-    if (!session) {
-      navigate("/profile");
-    } else {
-      // Handle starting a chat (this will be implemented later)
-      console.log("Starting chat...");
+  const handleStartChat = async () => {
+    try {
+      // If not logged in, create a temporary user
+      if (!session) {
+        const { data: tempUser, error: userError } = await supabase
+          .from('users')
+          .insert([{}])
+          .select()
+          .single();
+
+        if (userError) throw userError;
+
+        // Add user to waiting room
+        const { error: waitingError } = await supabase
+          .from('waiting_room')
+          .insert([{ user_id: tempUser.id }]);
+
+        if (waitingError) throw waitingError;
+
+        // Start listening for matches
+        listenForMatch(tempUser.id);
+      } else {
+        // Add authenticated user to waiting room
+        const { error: waitingError } = await supabase
+          .from('waiting_room')
+          .insert([{ user_id: session.user.id }]);
+
+        if (waitingError) throw waitingError;
+
+        // Start listening for matches
+        listenForMatch(session.user.id);
+      }
+
+      toast("Looking for someone to chat with...");
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast.error("Failed to start chat. Please try again.");
     }
+  };
+
+  const listenForMatch = (userId: string) => {
+    const channel = supabase
+      .channel('chat-matching')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_rooms',
+          filter: `participants=cs.{${userId}}`
+        },
+        (payload) => {
+          console.log('Match found:', payload);
+          // Navigate to chat room when match is found
+          if (payload.new && payload.new.id) {
+            navigate(`/chat/${payload.new.id}`);
+          }
+        }
+      )
+      .subscribe();
+
+    // Clean up subscription when component unmounts
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
   return (
