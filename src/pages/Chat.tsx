@@ -26,13 +26,35 @@ const Chat = () => {
   const navigate = useNavigate();
   const [newMessage, setNewMessage] = useState("");
   const [otherUser, setOtherUser] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
+  const [canSendMessages, setCanSendMessages] = useState(false);
   
   const { isMatched, isSearching } = useMatchmaking(roomId!, session?.user?.id);
   const { messages, sendMessage } = useMessages(roomId!);
 
+  // Effect to check if user can send messages
+  useEffect(() => {
+    const checkRoomParticipants = async () => {
+      if (!roomId || !session?.user?.id) return;
+
+      const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('participants')
+        .eq('id', roomId)
+        .single();
+
+      if (room?.participants) {
+        const isUserInRoom = room.participants.includes(session.user.id);
+        const hasTwoParticipants = room.participants.length === 2;
+        setCanSendMessages(isUserInRoom && hasTwoParticipants);
+      }
+    };
+
+    checkRoomParticipants();
+  }, [roomId, session?.user?.id, isMatched]);
+
   useEffect(() => {
     const fetchOtherUserProfile = async () => {
-      if (!isMatched || !roomId || !session?.user?.id) return;
+      if (!canSendMessages || !roomId || !session?.user?.id) return;
 
       const { data: room } = await supabase
         .from('chat_rooms')
@@ -57,11 +79,11 @@ const Chat = () => {
     };
 
     fetchOtherUserProfile();
-  }, [isMatched, roomId, session?.user?.id]);
+  }, [canSendMessages, roomId, session?.user?.id]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !isMatched) return;
+    if (!newMessage.trim() || !canSendMessages) return;
     await sendMessage(newMessage, session?.user?.id);
     setNewMessage("");
   };
@@ -77,7 +99,6 @@ const Chat = () => {
         .single();
 
       if (room && Array.isArray(room.participants)) {
-        // Filter out the current user from participants
         const updatedParticipants = room.participants.filter(id => id !== session.user.id);
 
         const { error } = await supabase
@@ -88,7 +109,7 @@ const Chat = () => {
         if (error) throw error;
 
         toast.success("Successfully left the chat");
-        navigate('/'); // Redirect to home page
+        navigate('/');
       }
     } catch (error) {
       console.error('Error leaving chat:', error);
@@ -98,7 +119,7 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      {!isMatched && (
+      {!canSendMessages && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
@@ -111,7 +132,7 @@ const Chat = () => {
         </div>
       )}
       
-      {isMatched && (
+      {canSendMessages && (
         <>
           {otherUser && (
             <Card className="mb-4">
