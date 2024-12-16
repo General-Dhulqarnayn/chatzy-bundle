@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -36,7 +37,7 @@ const Index = () => {
 
   // If user was in a chat and didn't explicitly choose to start a new one,
   // redirect them back to their chat
-  React.useEffect(() => {
+  useEffect(() => {
     if (previousChatId) {
       navigate(`/chat/${previousChatId}`);
     }
