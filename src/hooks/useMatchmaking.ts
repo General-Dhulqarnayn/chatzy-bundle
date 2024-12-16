@@ -66,22 +66,35 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         return;
       }
 
-      // If room is already matched, just set the state
+      // If room is already matched, handle accordingly
       if (room.participants.length === 2) {
         if (room.participants.includes(userId)) {
           setIsMatched(true);
           setIsSearching(false);
         } else {
-          // If room is full and user is not in it, redirect them to create a new room
+          // If room is full and user is not in it, redirect them
           navigate('/');
           toast.error("This room is full");
         }
         return;
       }
 
-      // If room has one participant and it's not the current user, join this room
+      // If room has one participant and it's not the current user, try to join
       if (room.participants.length === 1 && !room.participants.includes(userId)) {
         try {
+          // Check if the room is still available
+          const { data: latestRoom } = await supabase
+            .from('chat_rooms')
+            .select('participants')
+            .eq('id', roomId)
+            .single();
+
+          if (latestRoom?.participants.length === 2) {
+            navigate('/');
+            toast.error("This room is no longer available");
+            return;
+          }
+
           const { error: updateError } = await supabase
             .from('chat_rooms')
             .update({ participants: [...room.participants, userId] })
@@ -98,52 +111,79 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         }
       }
 
-      // If room is empty or user is the only participant, start matchmaking process
-      if (room.participants.length === 0 || (room.participants.length === 1 && room.participants.includes(userId))) {
-        setIsSearching(true);
-        
-        try {
-          // Add first participant if room is empty
-          if (room.participants.length === 0) {
-            await addFirstParticipant(roomId, userId);
-            console.log('Added first participant');
-          }
-          
-          // Remove from waiting room if present
-          await removeFromWaitingRoom([userId]);
-          
-          // Join waiting room
-          await joinWaitingRoom(userId);
-          console.log('Joined waiting room');
-          
-          toast("Looking for someone to chat with...");
-          
-          // Look for a match
-          const matchedUser = await findMatch(userId);
-          console.log('Found match:', matchedUser);
-          
-          if (matchedUser) {
-            // Update room with both participants
-            const { error: updateError } = await supabase
-              .from('chat_rooms')
-              .update({ participants: [userId, matchedUser.user_id] })
-              .eq('id', roomId);
-
-            if (updateError) {
-              console.error('Error updating room:', updateError);
-              return;
-            }
-
-            // Clean up waiting room
-            await removeFromWaitingRoom([userId, matchedUser.user_id]);
-            
-            // Check final room status
-            await checkRoomStatus();
-          }
-        } catch (error) {
-          console.error('Error in matchmaking:', error);
-          toast.error("Failed to set up matchmaking");
+      // Start matchmaking process
+      setIsSearching(true);
+      
+      try {
+        // Add first participant if room is empty
+        if (room.participants.length === 0) {
+          await addFirstParticipant(roomId, userId);
+          console.log('Added first participant');
         }
+        
+        // Remove from waiting room if present
+        await removeFromWaitingRoom([userId]);
+        
+        // Join waiting room
+        await joinWaitingRoom(userId);
+        console.log('Joined waiting room');
+        
+        toast("Looking for someone to chat with...");
+        
+        // Look for a match with retries
+        let retryCount = 0;
+        const maxRetries = 3;
+        let matchedUser = null;
+
+        while (retryCount < maxRetries && !matchedUser) {
+          matchedUser = await findMatch(userId);
+          if (!matchedUser) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+          }
+        }
+
+        if (!matchedUser) {
+          toast.error("Couldn't find a match at this time. Please try again.");
+          navigate('/');
+          return;
+        }
+
+        console.log('Found match:', matchedUser);
+        
+        // Double check room is still available
+        const { data: currentRoom } = await supabase
+          .from('chat_rooms')
+          .select('participants')
+          .eq('id', roomId)
+          .single();
+
+        if (currentRoom?.participants.length === 2) {
+          toast.error("Room is no longer available");
+          navigate('/');
+          return;
+        }
+
+        // Update room with both participants
+        const { error: updateError } = await supabase
+          .from('chat_rooms')
+          .update({ participants: [userId, matchedUser.user_id] })
+          .eq('id', roomId);
+
+        if (updateError) {
+          console.error('Error updating room:', updateError);
+          return;
+        }
+
+        // Clean up waiting room
+        await removeFromWaitingRoom([userId, matchedUser.user_id]);
+        
+        // Check final room status
+        await checkRoomStatus();
+      } catch (error) {
+        console.error('Error in matchmaking:', error);
+        toast.error("Failed to set up matchmaking");
+        navigate('/');
       }
     };
 
