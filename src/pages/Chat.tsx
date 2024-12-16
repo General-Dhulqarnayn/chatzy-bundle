@@ -14,9 +14,16 @@ const Chat = () => {
   const [isMatched, setIsMatched] = useState(false);
 
   useEffect(() => {
-    // Add user to waiting room if authenticated
+    // Add user to waiting room only if authenticated
     const setupMatchmaking = async () => {
       if (session?.user?.id) {
+        // Remove any existing entries for this user from waiting room
+        await supabase
+          .from('waiting_room')
+          .delete()
+          .eq('user_id', session.user.id);
+
+        // Add user to waiting room
         const { error: waitingError } = await supabase
           .from('waiting_room')
           .insert([{ user_id: session.user.id }]);
