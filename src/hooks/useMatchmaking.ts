@@ -22,34 +22,35 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
         const room = await checkExistingRoom(roomId, userId);
         if (!room) return;
 
-        // If user is already in a room with two participants, they're matched
-        if (room.participants.includes(userId) && room.participants.length === 2) {
-          console.log('User is already in a matched room:', room);
+        console.log('Current room state:', room);
+        
+        // Check if this is a matched room (has 2 participants)
+        const isMatchedRoom = room.participants.length === 2;
+        const isUserParticipant = room.participants.includes(userId);
+
+        if (isMatchedRoom && isUserParticipant) {
+          console.log('Room is already matched and user is participant');
           setIsMatched(true);
           setIsSearching(false);
           return;
         }
 
-        // If user is the only participant, they're searching
-        if (room.participants.includes(userId) && room.participants.length === 1) {
-          console.log('User is the only participant, setting searching state');
+        // If user is the only participant or room is empty, start searching
+        if (room.participants.length <= 1) {
+          console.log('Room needs matching, starting search');
           setIsSearching(true);
-        }
+          
+          // If room is empty, add user as first participant
+          if (room.participants.length === 0) {
+            console.log('Adding user as first participant');
+            await addFirstParticipant(roomId, userId);
+          }
 
-        // If room is empty, add the user as first participant
-        if (room.participants.length === 0) {
-          console.log('Room is empty, adding user as first participant');
-          await addFirstParticipant(roomId, userId);
-          setIsSearching(true);
-        }
+          // Clean up any existing waiting room entries
+          await removeFromWaitingRoom([userId]);
 
-        // Clean up any existing waiting room entries
-        await removeFromWaitingRoom([userId]);
-
-        if (!isMatched) {
-          setIsSearching(true);
+          // Start matchmaking process
           toast("Looking for someone to chat with...");
-
           await joinWaitingRoom(userId);
           const matchedUser = await findMatch(userId);
 
@@ -97,12 +98,11 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           const newData = payload.new as ChatRoom;
           
           if (newData && Array.isArray(newData.participants)) {
-            // Check if the current user is in the participants array
             const isUserParticipant = newData.participants.includes(userId);
             const hasTwoParticipants = newData.participants.length === 2;
 
-            console.log('Is user participant:', isUserParticipant);
-            console.log('Has two participants:', hasTwoParticipants);
+            console.log('Real-time update - User participant:', isUserParticipant);
+            console.log('Real-time update - Has two participants:', hasTwoParticipants);
 
             if (isUserParticipant && hasTwoParticipants) {
               console.log('Setting matched state for user:', userId);
