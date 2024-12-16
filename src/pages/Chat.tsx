@@ -11,7 +11,7 @@ const Chat = () => {
   const { session } = useAuth();
   const [newMessage, setNewMessage] = useState("");
   
-  const { isMatched } = useMatchmaking(roomId!, session?.user?.id);
+  const { isMatched, isSearching } = useMatchmaking(roomId!, session?.user?.id);
   const { messages, sendMessage } = useMessages(roomId!);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -27,7 +27,11 @@ const Chat = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-lg">Looking for someone to chat with...</p>
+            <p className="text-lg">
+              {isSearching 
+                ? "Looking for someone to chat with..." 
+                : "Setting up chat..."}
+            </p>
           </div>
         </div>
       )}

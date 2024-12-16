@@ -52,19 +52,30 @@ export const useMessages = (roomId: string) => {
     if (!content.trim() || !userId) return;
 
     try {
+      const newMessage = {
+        content,
+        chat_room_id: roomId,
+        user_id: userId,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString()
+      };
+
+      // Optimistically add the message to the UI
+      setMessages(current => [...current, newMessage]);
+
       const { error } = await supabase
         .from('messages')
-        .insert([
-          {
-            content,
-            chat_room_id: roomId,
-            user_id: userId
-          }
-        ]);
+        .insert([{
+          content,
+          chat_room_id: roomId,
+          user_id: userId
+        }]);
 
       if (error) {
         console.error('Error sending message:', error);
         toast.error("Failed to send message");
+        // Remove the optimistically added message if there was an error
+        setMessages(current => current.filter(msg => msg.id !== newMessage.id));
       }
     } catch (error) {
       console.error('Error sending message:', error);

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 export const useMatchmaking = (roomId: string, userId: string | undefined) => {
   const [isMatched, setIsMatched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -29,6 +30,9 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           .from('waiting_room')
           .delete()
           .eq('user_id', userId);
+
+        setIsSearching(true);
+        toast("Looking for someone to chat with...");
 
         // Add to waiting room
         const { error: waitingError } = await supabase
@@ -74,9 +78,8 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
             .in('user_id', [userId, waitingUsers[0].user_id]);
 
           setIsMatched(true);
+          setIsSearching(false);
           toast.success("Match found! You can now start chatting.");
-        } else {
-          toast("Looking for someone to chat with...");
         }
       } catch (error) {
         console.error('Error in matchmaking setup:', error);
@@ -101,6 +104,7 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
           console.log('Room updated:', payload);
           if (payload.new.participants?.includes(userId)) {
             setIsMatched(true);
+            setIsSearching(false);
             toast.success("Match found! You can now start chatting.");
           }
         }
@@ -112,5 +116,5 @@ export const useMatchmaking = (roomId: string, userId: string | undefined) => {
     };
   }, [roomId, userId]);
 
-  return { isMatched };
+  return { isMatched, isSearching };
 };
