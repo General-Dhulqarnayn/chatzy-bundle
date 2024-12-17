@@ -77,9 +77,9 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       console.log('Cleaning up existing waiting room entries');
       await removeFromWaitingRoom([userId]);
 
-      // Join waiting room
-      console.log('Joining waiting room');
-      await joinWaitingRoom(userId);
+      // Join waiting room with subject category
+      console.log('Joining waiting room with category:', room.subject_category);
+      await joinWaitingRoom(userId, room.subject_category);
 
       // Look for a match with retries
       let matchAttempts = 0;
@@ -112,7 +112,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Verify room is still available
       const { data: currentRoom } = await supabase
         .from('chat_rooms')
-        .select('participants, subject_category')
+        .select('participants')
         .eq('id', roomId)
         .single();
 

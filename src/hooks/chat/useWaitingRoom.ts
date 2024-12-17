@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const useWaitingRoom = () => {
-  const joinWaitingRoom = async (userId: string) => {
+  const joinWaitingRoom = async (userId: string, subjectCategory: string) => {
     try {
-      console.log('Attempting to join waiting room:', userId);
+      console.log('Attempting to join waiting room:', { userId, subjectCategory });
       
       // First check if user is already in waiting room
       const { data: existing, error: checkError } = await supabase
@@ -25,7 +25,10 @@ export const useWaitingRoom = () => {
 
       const { error: insertError } = await supabase
         .from('waiting_room')
-        .insert([{ user_id: userId }]);
+        .insert([{ 
+          user_id: userId,
+          subject_category: subjectCategory 
+        }]);
 
       if (insertError) {
         console.error('Error joining waiting room:', insertError);
@@ -56,11 +59,14 @@ export const useWaitingRoom = () => {
         throw roomError;
       }
 
+      console.log('Room category:', room.subject_category);
+
       // Get all waiting users except current user who are looking for the same subject
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
         .select('*')
         .neq('user_id', userId)
+        .eq('subject_category', room.subject_category)
         .order('created_at', { ascending: true });
 
       if (matchError) {
