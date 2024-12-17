@@ -6,14 +6,14 @@ export const useWaitingRoom = () => {
     try {
       console.log('Attempting to join waiting room:', userId);
       
-      // First check if user is already in waiting room
+      // First check if user is already in waiting room - fixed query format
       const { data: existing, error: checkError } = await supabase
         .from('waiting_room')
-        .select('id')
+        .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
         console.error('Error checking waiting room:', checkError);
         throw checkError;
       }
@@ -47,7 +47,7 @@ export const useWaitingRoom = () => {
       // Get all waiting users except current user
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
-        .select('user_id, created_at')
+        .select('*')
         .neq('user_id', userId)
         .order('created_at', { ascending: true });
 
