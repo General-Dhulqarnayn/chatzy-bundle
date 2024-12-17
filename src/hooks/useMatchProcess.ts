@@ -77,9 +77,9 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       console.log('Cleaning up existing waiting room entries');
       await removeFromWaitingRoom([userId]);
 
-      // Join waiting room
-      console.log('Joining waiting room');
-      await joinWaitingRoom(userId);
+      // Join waiting room with subject category
+      console.log('Joining waiting room with category:', room.subject_category);
+      await joinWaitingRoom(userId, room.subject_category);
 
       // Look for a match with retries
       let matchAttempts = 0;
@@ -89,7 +89,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId, roomId); // Pass both userId and roomId
+        matchedUser = await findMatch(userId, roomId);
         
         if (!matchedUser) {
           matchAttempts++;
