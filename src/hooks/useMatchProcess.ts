@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useRoomManagement } from "./useRoomManagement";
-import { useWaitingRoom } from "./useWaitingRoom";
+import { useRoomManagement } from "./chat/useRoomManagement";
+import { useWaitingRoom } from "./chat/useWaitingRoom";
 
 export const useMatchProcess = (roomId: string, userId: string | undefined) => {
   const navigate = useNavigate();
