@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useRoomManagement } from "./chat/useRoomManagement";
-import { useWaitingRoom } from "./chat/useWaitingRoom";
+import { useRoomManagement } from "./useRoomManagement";
+import { useWaitingRoom } from "./useWaitingRoom";
 
 export const useMatchProcess = (roomId: string, userId: string | undefined) => {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Check if the room exists and is available
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, subject_category')
         .eq('id', roomId)
         .single();
 
@@ -89,7 +89,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId);
+        matchedUser = await findMatch(userId, roomId); // Pass both userId and roomId
         
         if (!matchedUser) {
           matchAttempts++;
