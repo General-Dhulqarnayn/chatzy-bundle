@@ -37,9 +37,10 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
       const isUserInRoom = room.participants.includes(userId);
       const hasTwoParticipants = room.participants.length === 2;
 
-      console.log('Room status:', { isUserInRoom, hasTwoParticipants });
+      console.log('Room status:', { isUserInRoom, hasTwoParticipants, participants: room.participants });
 
       if (isUserInRoom && hasTwoParticipants) {
+        console.log('Match confirmed - both users in room');
         setIsMatched(true);
         return true;
       }
@@ -59,6 +60,10 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
 
     console.log('Setting up room status subscription:', { roomId, userId });
 
+    // Initial check
+    checkRoomStatus();
+
+    // Subscribe to room changes
     const channel = supabase
       .channel(`room-${roomId}`)
       .on(
@@ -77,9 +82,6 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
       .subscribe((status) => {
         console.log('Room subscription status:', status);
       });
-
-    // Initial check
-    checkRoomStatus();
 
     return () => {
       console.log('Cleaning up room status subscription');

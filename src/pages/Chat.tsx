@@ -49,10 +49,10 @@ const Chat = () => {
         console.log('Room participants:', room.participants);
         const isUserInRoom = room.participants.includes(session.user.id);
         const hasTwoParticipants = room.participants.length === 2;
-        setCanSendMessages(isUserInRoom && hasTwoParticipants);
-
-        // Fetch other user's profile
-        if (hasTwoParticipants) {
+        
+        if (isUserInRoom && hasTwoParticipants) {
+          setCanSendMessages(true);
+          // Fetch other user's profile
           const otherUserId = room.participants.find(id => id !== session.user.id);
           if (otherUserId) {
             console.log('Fetching other user profile:', otherUserId);
@@ -69,12 +69,15 @@ const Chat = () => {
               setOtherUser(profile);
             }
           }
+        } else {
+          setCanSendMessages(false);
         }
       } catch (error) {
         console.error('Error in checkRoomAndFetchProfile:', error);
       }
     };
 
+    // Run check immediately when component mounts or when isMatched changes
     checkRoomAndFetchProfile();
 
     // Subscribe to room changes
@@ -89,8 +92,8 @@ const Chat = () => {
           table: 'chat_rooms',
           filter: `id=eq.${roomId}`
         },
-        (payload) => {
-          console.log('Room update received:', payload);
+        () => {
+          console.log('Room update received, checking room status...');
           checkRoomAndFetchProfile();
         }
       )
@@ -102,7 +105,7 @@ const Chat = () => {
       console.log('Cleaning up room subscription');
       supabase.removeChannel(channel);
     };
-  }, [roomId, session?.user?.id]);
+  }, [roomId, session?.user?.id, isMatched]);
 
   const handleSendMessage = async (content: string) => {
     if (!session?.user?.id) {
