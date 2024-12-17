@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Calculator, BookOpen, Flask } from "lucide-react";
+import { MessageSquare, Calculator, BookOpen, Beaker } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,7 +91,7 @@ const Index = () => {
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="science" id="science" />
               <Label htmlFor="science" className="flex items-center space-x-2">
-                <Flask className="h-4 w-4" />
+                <Beaker className="h-4 w-4" />
                 <span>Science</span>
               </Label>
             </div>
