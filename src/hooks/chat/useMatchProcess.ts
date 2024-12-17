@@ -19,10 +19,23 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
     try {
       console.log('Starting matchmaking process:', { userId, roomId });
 
-      // First, check if the room exists and is available
+      // First verify the user exists in the users table
+      const { data: userExists, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (userCheckError || !userExists) {
+        console.error('User not found in users table:', userCheckError);
+        toast.error("Please try again in a moment");
+        return;
+      }
+
+      // Check if the room exists and is available
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, subject_category')
         .eq('id', roomId)
         .single();
 
@@ -70,13 +83,13 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       // Look for a match with retries
       let matchAttempts = 0;
-      const maxAttempts = 15; // Increased attempts
+      const maxAttempts = 15;
       const retryDelay = 2000;
       let matchedUser = null;
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId);
+        matchedUser = await findMatch(userId, roomId);
         
         if (!matchedUser) {
           matchAttempts++;
@@ -99,7 +112,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Verify room is still available
       const { data: currentRoom } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, subject_category')
         .eq('id', roomId)
         .single();
 

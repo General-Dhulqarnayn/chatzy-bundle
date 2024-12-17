@@ -14,16 +14,19 @@ export type Database = {
           created_at: string | null
           id: string
           participants: string[]
+          subject_category: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           participants: string[]
+          subject_category?: string
         }
         Update: {
           created_at?: string | null
           id?: string
           participants?: string[]
+          subject_category?: string
         }
         Relationships: []
       }

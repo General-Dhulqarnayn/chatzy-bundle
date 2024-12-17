@@ -6,7 +6,7 @@ export const useWaitingRoom = () => {
     try {
       console.log('Attempting to join waiting room:', userId);
       
-      // First check if user is already in waiting room - fixed query format
+      // First check if user is already in waiting room
       const { data: existing, error: checkError } = await supabase
         .from('waiting_room')
         .select('*')
@@ -40,11 +40,23 @@ export const useWaitingRoom = () => {
     }
   };
 
-  const findMatch = async (userId: string) => {
+  const findMatch = async (userId: string, roomId: string) => {
     try {
       console.log('Looking for match for user:', userId);
       
-      // Get all waiting users except current user
+      // First get the subject category of the current room
+      const { data: room, error: roomError } = await supabase
+        .from('chat_rooms')
+        .select('subject_category')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) {
+        console.error('Error getting room category:', roomError);
+        throw roomError;
+      }
+
+      // Get all waiting users except current user who are looking for the same subject
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
         .select('*')
