@@ -1,52 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import RoomSelectionForm from "@/components/chat/RoomSelectionForm";
 
+const ROOM_IDS = {
+  general: 'general-room',
+  maths: 'maths-room',
+  english: 'english-room',
+  science: 'science-room'
+};
+
 const Index = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState('general');
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
-
-  const handleCreateRoom = async () => {
-    if (!session?.user?.id) {
-      toast.error("Please sign in to create a room");
-      return;
-    }
-
-    try {
-      setIsCreatingRoom(true);
-      console.log('Creating new room with user:', session.user.id);
-      
-      const { data: room, error: createError } = await supabase
-        .from('chat_rooms')
-        .insert([{ 
-          participants: [session.user.id],
-          subject_category: selectedCategory 
-        }])
-        .select('id')
-        .single();
-
-      if (createError) throw createError;
-      if (!room?.id) throw new Error('No room created');
-
-      console.log('Room created successfully:', room.id);
-      toast.success("Room created! Waiting for someone to join...");
-      navigate(`/chat/${room.id}`);
-
-    } catch (error) {
-      console.error('Error creating room:', error);
-      toast.error("Failed to create room. Please try again.");
-    } finally {
-      setIsCreatingRoom(false);
-    }
-  };
+  const [selectedCategory, setSelectedCategory] = React.useState('general');
+  const [isJoining, setIsJoining] = React.useState(false);
 
   const handleJoinRoom = async () => {
     if (!session?.user?.id) {
@@ -55,52 +27,53 @@ const Index = () => {
     }
 
     try {
-      setIsJoiningRoom(true);
-      console.log('Looking for available room in category:', selectedCategory);
+      setIsJoining(true);
+      console.log('Joining room for category:', selectedCategory);
       
-      // Find a room with exactly one participant
-      const { data: rooms, error: findError } = await supabase
+      const roomId = ROOM_IDS[selectedCategory];
+      
+      // Check if room exists, if not create it
+      const { data: existingRoom } = await supabase
         .from('chat_rooms')
         .select('*')
-        .eq('subject_category', selectedCategory)
-        .not('participants', 'is', null);
+        .eq('id', roomId)
+        .single();
 
-      if (findError) throw findError;
+      if (!existingRoom) {
+        console.log('Creating permanent room for category:', selectedCategory);
+        const { error: createError } = await supabase
+          .from('chat_rooms')
+          .insert([{
+            id: roomId,
+            subject_category: selectedCategory,
+            participants: [session.user.id]
+          }]);
 
-      // Find a room that has space and doesn't include the current user
-      const availableRoom = rooms?.find(room => 
-        Array.isArray(room.participants) && 
-        room.participants.length === 1 &&
-        !room.participants.includes(session.user.id)
-      );
+        if (createError) throw createError;
+      } else {
+        // Add user to existing room if not already present
+        const currentParticipants = existingRoom.participants || [];
+        if (!currentParticipants.includes(session.user.id)) {
+          const { error: updateError } = await supabase
+            .from('chat_rooms')
+            .update({
+              participants: [...currentParticipants, session.user.id]
+            })
+            .eq('id', roomId);
 
-      if (!availableRoom) {
-        console.log('No available rooms found');
-        toast.error("No available rooms found. Please try again or create a new room.");
-        return;
+          if (updateError) throw updateError;
+        }
       }
 
-      console.log('Found available room:', availableRoom.id);
-
-      // Update room participants by adding the current user
-      const { error: updateError } = await supabase
-        .from('chat_rooms')
-        .update({ 
-          participants: [...availableRoom.participants, session.user.id]
-        })
-        .eq('id', availableRoom.id);
-
-      if (updateError) throw updateError;
-
-      console.log('Successfully joined room:', availableRoom.id);
+      console.log('Successfully joined room:', roomId);
       toast.success("Room joined successfully!");
-      navigate(`/chat/${availableRoom.id}`);
+      navigate(`/chat/${roomId}`);
 
     } catch (error) {
       console.error('Error joining room:', error);
       toast.error("Failed to join room. Please try again.");
     } finally {
-      setIsJoiningRoom(false);
+      setIsJoining(false);
     }
   };
 
@@ -108,11 +81,11 @@ const Index = () => {
     <div className="flex min-h-[80vh] flex-col items-center justify-center">
       <div className="text-center space-y-6">
         <h1 className="text-4xl font-bold tracking-tight slide-up">
-          Start a New Chat
+          Join a Chat Room
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto slide-up animation-delay-100">
           {session 
-            ? "Connect with someone new and start a conversation. It's that simple."
+            ? "Select a subject and join a room to start chatting."
             : "Try it out as a guest or sign in to access all features."}
         </p>
         
@@ -123,27 +96,15 @@ const Index = () => {
           />
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleCreateRoom}
-                disabled={isCreatingRoom || isJoiningRoom}
-              >
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Create Room
-              </Button>
-              <Button
-                size="lg"
-                variant="secondary"
-                className="w-full"
-                onClick={handleJoinRoom}
-                disabled={isCreatingRoom || isJoiningRoom}
-              >
-                <UserPlus className="mr-2 h-5 w-5" />
-                Join Room
-              </Button>
-            </div>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleJoinRoom}
+              disabled={isJoining}
+            >
+              <UserPlus className="mr-2 h-5 w-5" />
+              Join Room
+            </Button>
           </div>
         </div>
 
