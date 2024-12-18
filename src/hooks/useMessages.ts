@@ -6,6 +6,8 @@ export const useMessages = (roomId: string) => {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!roomId) return;
+    
     console.log('Initializing messages for room:', roomId);
     
     // Load existing messages
@@ -32,7 +34,7 @@ export const useMessages = (roomId: string) => {
     // Subscribe to new messages
     console.log('Setting up message subscription for room:', roomId);
     const channel = supabase
-      .channel(`messages-${roomId}`)
+      .channel(`messages:${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -43,11 +45,13 @@ export const useMessages = (roomId: string) => {
         },
         (payload) => {
           console.log('New message received:', payload);
-          // Check if message already exists to prevent duplicates
-          setMessages(current => {
-            const messageExists = current.some(msg => msg.id === payload.new.id);
-            if (messageExists) return current;
-            return [...current, payload.new];
+          setMessages(currentMessages => {
+            // Check if message already exists
+            const exists = currentMessages.some(msg => msg.id === payload.new.id);
+            if (exists) {
+              return currentMessages;
+            }
+            return [...currentMessages, payload.new];
           });
         }
       )
@@ -62,8 +66,8 @@ export const useMessages = (roomId: string) => {
   }, [roomId]);
 
   const sendMessage = async (content: string, userId: string | undefined) => {
-    if (!content.trim() || !userId) {
-      console.log('Invalid message or missing user ID');
+    if (!content.trim() || !userId || !roomId) {
+      console.log('Invalid message, missing user ID or room ID');
       return;
     }
 
@@ -81,8 +85,6 @@ export const useMessages = (roomId: string) => {
       if (error) {
         console.error('Error sending message:', error);
         toast.error("Failed to send message");
-      } else {
-        console.log('Message sent successfully');
       }
     } catch (error) {
       console.error('Error sending message:', error);

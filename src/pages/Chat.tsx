@@ -16,10 +16,9 @@ const Chat = () => {
   const [otherUser, setOtherUser] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
   const [canSendMessages, setCanSendMessages] = useState(false);
   
-  const { isMatched, isSearching } = useMatchmaking(roomId!, session?.user?.id);
+  const { isMatched } = useMatchmaking(roomId!, session?.user?.id);
   const { messages, sendMessage } = useMessages(roomId!);
 
-  // Effect to check if user can send messages and fetch other user's profile
   useEffect(() => {
     const checkRoomAndFetchProfile = async () => {
       if (!roomId || !session?.user?.id) {
@@ -84,13 +83,11 @@ const Chat = () => {
       }
     };
 
-    // Run check immediately when component mounts or when isMatched changes
     checkRoomAndFetchProfile();
 
     // Subscribe to room changes
-    console.log('Setting up room subscription...');
     const channel = supabase
-      .channel(`room-${roomId}`)
+      .channel(`room:${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -104,22 +101,18 @@ const Chat = () => {
           checkRoomAndFetchProfile();
         }
       )
-      .subscribe((status) => {
-        console.log('Room subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up room subscription');
       supabase.removeChannel(channel);
     };
-  }, [roomId, session?.user?.id, isMatched, navigate]);
+  }, [roomId, session?.user?.id, navigate]);
 
   const handleSendMessage = async (content: string) => {
     if (!session?.user?.id) {
       console.log('No user ID available for sending message');
       return;
     }
-    console.log('Sending message:', { content, userId: session.user.id });
     await sendMessage(content, session.user.id);
   };
 
@@ -160,11 +153,7 @@ const Chat = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-lg">
-              {isSearching 
-                ? "Looking for someone to chat with..." 
-                : "Setting up chat..."}
-            </p>
+            <p className="text-lg">Setting up chat...</p>
           </div>
         </div>
       )}
