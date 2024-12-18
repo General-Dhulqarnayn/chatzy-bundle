@@ -1,12 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 export const useRoomManagement = () => {
   const joinExistingRoom = async (roomId: string, userId: string) => {
     try {
       console.log('Attempting to join room:', { roomId, userId });
       
-      // First get current participants
       const { data: currentRoom } = await supabase
         .from('chat_rooms')
         .select('participants')
@@ -18,13 +16,11 @@ export const useRoomManagement = () => {
         return false;
       }
 
-      // Ensure participants is an array and remove duplicates
       const currentParticipants = Array.isArray(currentRoom.participants) ? currentRoom.participants : [];
       const uniqueParticipants = [...new Set([...currentParticipants, userId])];
       
       console.log('Current room state:', { currentParticipants, uniqueParticipants });
       
-      // Only allow max 2 participants
       if (uniqueParticipants.length > 2) {
         console.log('Room is full');
         return false;
@@ -54,7 +50,6 @@ export const useRoomManagement = () => {
     try {
       console.log('Looking for available room in category:', category);
       
-      // Get rooms in the specified category with exactly one participant
       const { data: rooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
@@ -66,11 +61,10 @@ export const useRoomManagement = () => {
         return null;
       }
 
-      // Find a room with exactly one participant
       const availableRoom = rooms?.find(room => 
         Array.isArray(room.participants) && 
         room.participants.length === 1 &&
-        room.participants[0] !== null // Ensure the participant is valid
+        room.participants[0] !== null
       );
 
       console.log('Available room found:', availableRoom);

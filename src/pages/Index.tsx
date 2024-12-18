@@ -55,48 +55,18 @@ const Index = () => {
 
     try {
       setIsJoiningRoom(true);
-      const toastId = toast.loading("Searching for available rooms...");
+      const availableRoom = await findAvailableRoom(selectedCategory);
       
-      // Try to find a room for 60 seconds with multiple attempts
-      const startTime = Date.now();
-      const timeoutDuration = 60000; // 60 seconds
-      const maxAttempts = 10;
-      let attempts = 0;
-      
-      const findRoom = async () => {
-        attempts++;
-        console.log(`Attempt ${attempts} to find room...`);
-        
-        const availableRoom = await findAvailableRoom(selectedCategory);
-        
-        if (availableRoom) {
-          const success = await joinExistingRoom(availableRoom.id, session.user.id);
-          if (success) {
-            toast.dismiss(toastId);
-            toast.success("Room joined successfully!");
-            navigate(`/chat/${availableRoom.id}`, { replace: true });
-            return true;
-          }
+      if (availableRoom) {
+        const success = await joinExistingRoom(availableRoom.id, session.user.id);
+        if (success) {
+          toast.success("Room joined successfully!");
+          navigate(`/chat/${availableRoom.id}`, { replace: true });
+          return;
         }
-        
-        // Continue searching if we haven't exceeded time limit and max attempts
-        if (Date.now() - startTime < timeoutDuration && attempts < maxAttempts) {
-          // Increase wait time between attempts
-          const waitTime = Math.min(2000 * attempts, 5000); // Start with 2s, max 5s
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          return findRoom();
-        }
-        
-        return false;
-      };
-      
-      const found = await findRoom();
-      
-      if (!found) {
-        toast.dismiss(toastId);
-        toast.error(`No available rooms found after ${attempts} attempts. Please try again or create a new room.`);
       }
       
+      toast.error("No available rooms found. Please try again or create a new room.");
       setIsJoiningRoom(false);
     } catch (error) {
       console.error('Error joining room:', error);
