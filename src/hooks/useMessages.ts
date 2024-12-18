@@ -43,7 +43,12 @@ export const useMessages = (roomId: string) => {
         },
         (payload) => {
           console.log('New message received:', payload);
-          setMessages(current => [...current, payload.new]);
+          // Check if message already exists to prevent duplicates
+          setMessages(current => {
+            const messageExists = current.some(msg => msg.id === payload.new.id);
+            if (messageExists) return current;
+            return [...current, payload.new];
+          });
         }
       )
       .subscribe((status) => {
@@ -65,17 +70,6 @@ export const useMessages = (roomId: string) => {
     console.log('Sending message:', { content, userId, roomId });
 
     try {
-      const newMessage = {
-        content,
-        chat_room_id: roomId,
-        user_id: userId,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString()
-      };
-
-      // Optimistically add the message to the UI
-      setMessages(current => [...current, newMessage]);
-
       const { error } = await supabase
         .from('messages')
         .insert([{
@@ -87,8 +81,6 @@ export const useMessages = (roomId: string) => {
       if (error) {
         console.error('Error sending message:', error);
         toast.error("Failed to send message");
-        // Remove the optimistically added message if there was an error
-        setMessages(current => current.filter(msg => msg.id !== newMessage.id));
       } else {
         console.log('Message sent successfully');
       }
