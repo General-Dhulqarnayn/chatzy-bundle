@@ -37,7 +37,7 @@ const Index = () => {
         .from('chat_rooms')
         .select('*')
         .eq('id', roomId)
-        .single();
+        .maybeSingle();
 
       if (!existingRoom) {
         console.log('Creating permanent room for category:', selectedCategory);
@@ -49,7 +49,10 @@ const Index = () => {
             participants: [session.user.id]
           }]);
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Error creating room:', createError);
+          throw createError;
+        }
       } else {
         // Add user to existing room if not already present
         const currentParticipants = existingRoom.participants || [];
@@ -61,7 +64,10 @@ const Index = () => {
             })
             .eq('id', roomId);
 
-          if (updateError) throw updateError;
+          if (updateError) {
+            console.error('Error updating room:', updateError);
+            throw updateError;
+          }
         }
       }
 
@@ -103,7 +109,7 @@ const Index = () => {
               disabled={isJoining}
             >
               <UserPlus className="mr-2 h-5 w-5" />
-              Join Room
+              {isJoining ? "Joining..." : "Join Room"}
             </Button>
           </div>
         </div>

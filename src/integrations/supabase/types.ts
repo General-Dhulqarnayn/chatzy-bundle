@@ -18,7 +18,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          id?: string
+          id: string
           participants: string[]
           subject_category?: string
         }
