@@ -98,8 +98,10 @@ const Chat = () => {
         .single();
 
       if (room && Array.isArray(room.participants)) {
+        // Remove the current user from participants
         const updatedParticipants = room.participants.filter(id => id !== session.user.id);
-
+        
+        // Update the room with the new participants list
         await supabase
           .from('chat_rooms')
           .update({ participants: updatedParticipants })

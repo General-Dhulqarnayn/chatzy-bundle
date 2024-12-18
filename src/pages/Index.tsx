@@ -67,6 +67,7 @@ const Index = () => {
 
       if (findError) throw findError;
 
+      // Find a room that has space and doesn't include the current user
       const availableRoom = rooms?.find(room => 
         Array.isArray(room.participants) && 
         room.participants.length === 1 &&
@@ -81,11 +82,12 @@ const Index = () => {
 
       console.log('Found available room:', availableRoom.id);
 
-      // Update room participants
-      const updatedParticipants = [...availableRoom.participants, session.user.id];
+      // Update room participants by adding the current user
       const { error: updateError } = await supabase
         .from('chat_rooms')
-        .update({ participants: updatedParticipants })
+        .update({ 
+          participants: [...availableRoom.participants, session.user.id]
+        })
         .eq('id', availableRoom.id);
 
       if (updateError) throw updateError;
