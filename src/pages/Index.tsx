@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, UserPlus } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,18 +11,9 @@ import { useRoomManagement } from "@/hooks/useRoomManagement";
 const Index = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const { joinExistingRoom } = useRoomManagement();
-
-  const previousChatId = location.state?.from?.split('/chat/')?.[1];
-
-  useEffect(() => {
-    if (previousChatId) {
-      navigate(`/chat/${previousChatId}`);
-    }
-  }, [previousChatId, navigate]);
+  const { findAvailableRoom, joinExistingRoom } = useRoomManagement();
 
   const handleCreateRoom = async () => {
     if (!session?.user?.id) {
@@ -32,7 +23,7 @@ const Index = () => {
 
     try {
       setIsCreatingRoom(true);
-      toast.loading("Creating room and waiting for participants...");
+      const toastId = toast.loading("Creating room and waiting for participants...");
 
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
@@ -46,46 +37,31 @@ const Index = () => {
       if (roomError) throw roomError;
       if (!room) throw new Error('No room created');
 
-      // Start checking for participants
-      let attempts = 0;
-      const maxAttempts = 20; // 20 seconds
-      const checkInterval = setInterval(async () => {
-        const { data: updatedRoom, error: checkError } = await supabase
+      // Wait for 20 seconds for someone to join
+      setTimeout(async () => {
+        const { data: updatedRoom } = await supabase
           .from('chat_rooms')
           .select('participants')
           .eq('id', room.id)
           .single();
 
-        if (checkError) {
-          console.error('Error checking room:', checkError);
+        if (!updatedRoom || updatedRoom.participants.length < 2) {
+          // Delete the room if no one joined
+          await supabase
+            .from('chat_rooms')
+            .delete()
+            .eq('id', room.id);
+          
+          toast.dismiss(toastId);
+          toast.error("No one joined the room. Please try again.");
+          setIsCreatingRoom(false);
           return;
         }
 
-        attempts++;
-
-        // If someone joined or we've waited too long
-        if (updatedRoom?.participants?.length >= 2 || attempts >= maxAttempts) {
-          clearInterval(checkInterval);
-          setIsCreatingRoom(false);
-          
-          if (attempts >= maxAttempts && (!updatedRoom?.participants || updatedRoom.participants.length < 2)) {
-            // Clean up the room if no one joined
-            await supabase
-              .from('chat_rooms')
-              .delete()
-              .eq('id', room.id);
-            
-            toast.dismiss();
-            toast.error("No one joined the room. Please try again.");
-            return;
-          }
-
-          // If someone joined, navigate to the chat
-          toast.dismiss();
-          toast.success("Room created successfully!");
-          navigate(`/chat/${room.id}`, { replace: true });
-        }
-      }, 1000); // Check every second
+        toast.dismiss(toastId);
+        toast.success("Room created and participant joined!");
+        navigate(`/chat/${room.id}`, { replace: true });
+      }, 20000);
 
     } catch (error) {
       console.error('Error creating room:', error);
@@ -101,18 +77,7 @@ const Index = () => {
     }
 
     try {
-      const { data: availableRoom, error: roomError } = await supabase
-        .from('chat_rooms')
-        .select('id')
-        .eq('subject_category', selectedCategory)
-        .lt('participants', 2)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
-
-      if (roomError && roomError.code !== 'PGRST116') {
-        throw roomError;
-      }
+      const availableRoom = await findAvailableRoom(selectedCategory);
 
       if (!availableRoom) {
         toast.error("No available rooms found. Try creating one!");
@@ -133,7 +98,7 @@ const Index = () => {
     <div className="flex min-h-[80vh] flex-col items-center justify-center">
       <div className="text-center space-y-6">
         <h1 className="text-4xl font-bold tracking-tight slide-up">
-          {previousChatId ? "Return to Chat or Start New" : "Start a New Chat"}
+          Start a New Chat
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto slide-up animation-delay-100">
           {session 
@@ -148,16 +113,6 @@ const Index = () => {
           />
 
           <div className="space-y-4">
-            {previousChatId && (
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate(`/chat/${previousChatId}`)}
-              >
-                Return to Current Chat
-              </Button>
-            )}
             <div className="grid grid-cols-2 gap-4">
               <Button
                 size="lg"

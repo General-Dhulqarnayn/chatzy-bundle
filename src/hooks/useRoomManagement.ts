@@ -9,15 +9,17 @@ export const useRoomManagement = () => {
         .from('chat_rooms')
         .select('participants')
         .eq('id', roomId)
-        .single();
+        .maybeSingle();
 
       if (!currentRoom) {
         toast.error("Room not found");
         return false;
       }
 
-      // Update room with new participant
-      const updatedParticipants = [...(currentRoom.participants || []), userId];
+      // Ensure participants is an array and properly formatted for Postgres
+      const updatedParticipants = Array.isArray(currentRoom.participants) 
+        ? [...currentRoom.participants, userId]
+        : [userId];
       
       const { error: updateError } = await supabase
         .from('chat_rooms')
@@ -40,5 +42,28 @@ export const useRoomManagement = () => {
     }
   };
 
-  return { joinExistingRoom };
+  const findAvailableRoom = async (category: string) => {
+    try {
+      // Query for rooms with less than 2 participants using array length
+      const { data: room, error } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .eq('subject_category', category)
+        .filter('participants', 'cs', '{}')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error finding room:', error);
+        return null;
+      }
+
+      return room;
+    } catch (error) {
+      console.error('Error finding room:', error);
+      return null;
+    }
+  };
+
+  return { joinExistingRoom, findAvailableRoom };
 };
