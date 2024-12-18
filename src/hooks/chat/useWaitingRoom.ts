@@ -59,15 +59,9 @@ export const useWaitingRoom = () => {
         return null;
       }
 
-      console.log('Available matches:', waitingUsers ? [waitingUsers] : []);
+      console.log('Available matches:', waitingUsers);
 
-      if (waitingUsers) {
-        console.log('Found potential match:', waitingUsers);
-        return waitingUsers;
-      }
-
-      console.log('No matches found');
-      return null;
+      return waitingUsers;
     } catch (error) {
       console.error('Error in findMatch:', error);
       return null;

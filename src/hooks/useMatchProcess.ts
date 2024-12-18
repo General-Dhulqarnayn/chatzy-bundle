@@ -16,16 +16,20 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
     try {
       // Join waiting room
       await joinWaitingRoom(userId);
+      console.log('Joined waiting room, looking for match...');
 
       // Look for a match
       const matchedUser = await findMatch(userId);
       
       if (!matchedUser) {
+        console.log('No match found, cleaning up...');
         await removeFromWaitingRoom([userId]);
         toast.error("Couldn't find a match. Please try again.");
         navigate('/');
         return;
       }
+
+      console.log('Match found, updating room participants...');
 
       // Update room with both participants
       const { error: updateError } = await supabase
@@ -36,6 +40,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         .eq('id', roomId);
 
       if (updateError) {
+        console.error('Error updating room:', updateError);
         await removeFromWaitingRoom([userId]);
         throw updateError;
       }
@@ -43,6 +48,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Only remove from waiting room after successful match
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
       
+      console.log('Successfully matched and updated room!');
       toast.success("Match found! Starting chat...");
     } catch (error) {
       console.error('Error in matchmaking:', error);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoomStatus } from "./chat/useRoomStatus";
-import { useMatchProcess } from "./useMatchProcess";  // Updated import path
+import { useMatchProcess } from "./useMatchProcess";
 import { useWaitingRoom } from "./chat/useWaitingRoom";
 
 export const useMatchmaking = (roomId: string, userId: string | undefined) => {
