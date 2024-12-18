@@ -13,6 +13,7 @@ const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('general');
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
   const previousChatId = location.state?.from?.split('/chat/')?.[1];
 
@@ -24,6 +25,9 @@ const Index = () => {
 
   const handleCreateRoom = async () => {
     try {
+      setIsCreatingRoom(true);
+      toast.loading("Creating room and waiting for participants...");
+
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert([{ 
@@ -36,16 +40,56 @@ const Index = () => {
       if (roomError) throw roomError;
       if (!room) throw new Error('No room created');
 
-      navigate(`/chat/${room.id}`, { replace: true });
+      // Start checking for participants
+      let attempts = 0;
+      const maxAttempts = 20; // 20 seconds
+      const checkInterval = setInterval(async () => {
+        const { data: updatedRoom, error: checkError } = await supabase
+          .from('chat_rooms')
+          .select('participants')
+          .eq('id', room.id)
+          .single();
+
+        if (checkError) {
+          console.error('Error checking room:', checkError);
+          return;
+        }
+
+        attempts++;
+
+        // If someone joined or we've waited too long
+        if (updatedRoom?.participants?.length >= 2 || attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          setIsCreatingRoom(false);
+          
+          if (attempts >= maxAttempts && (!updatedRoom?.participants || updatedRoom.participants.length < 2)) {
+            // Clean up the room if no one joined
+            await supabase
+              .from('chat_rooms')
+              .delete()
+              .eq('id', room.id);
+            
+            toast.dismiss();
+            toast.error("No one joined the room. Please try again.");
+            return;
+          }
+
+          // If someone joined, navigate to the chat
+          toast.dismiss();
+          toast.success("Room created successfully!");
+          navigate(`/chat/${room.id}`, { replace: true });
+        }
+      }, 1000); // Check every second
+
     } catch (error) {
       console.error('Error creating room:', error);
       toast.error("Failed to create room. Please try again.");
+      setIsCreatingRoom(false);
     }
   };
 
   const handleJoinRoom = async () => {
     try {
-      // Find an available room with no participants or only one participant
       const { data: availableRoom, error: roomError } = await supabase
         .from('chat_rooms')
         .select('id')
@@ -136,6 +180,7 @@ const Index = () => {
                 size="lg"
                 className="w-full"
                 onClick={handleCreateRoom}
+                disabled={isCreatingRoom}
               >
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Create Room
@@ -145,6 +190,7 @@ const Index = () => {
                 variant="secondary"
                 className="w-full"
                 onClick={handleJoinRoom}
+                disabled={isCreatingRoom}
               >
                 <UserPlus className="mr-2 h-5 w-5" />
                 Join Room
