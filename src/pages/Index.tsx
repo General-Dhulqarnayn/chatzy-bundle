@@ -13,6 +13,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const { findAvailableRoom, joinExistingRoom } = useRoomManagement();
 
   const handleCreateRoom = async () => {
@@ -77,20 +78,48 @@ const Index = () => {
     }
 
     try {
-      const availableRoom = await findAvailableRoom(selectedCategory);
-
-      if (!availableRoom) {
-        toast.error("No available rooms found. Try creating one!");
-        return;
+      setIsJoiningRoom(true);
+      const toastId = toast.loading("Searching for available rooms...");
+      
+      // Try to find a room for 20 seconds
+      const startTime = Date.now();
+      const timeoutDuration = 20000; // 20 seconds
+      
+      const findRoom = async () => {
+        const availableRoom = await findAvailableRoom(selectedCategory);
+        
+        if (availableRoom) {
+          const success = await joinExistingRoom(availableRoom.id, session.user.id);
+          if (success) {
+            toast.dismiss(toastId);
+            toast.success("Room joined successfully!");
+            navigate(`/chat/${availableRoom.id}`, { replace: true });
+            return true;
+          }
+        }
+        
+        // Check if we've been searching for less than 20 seconds
+        if (Date.now() - startTime < timeoutDuration) {
+          // Wait for 1 second before trying again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return findRoom();
+        }
+        
+        return false;
+      };
+      
+      const found = await findRoom();
+      
+      if (!found) {
+        toast.dismiss(toastId);
+        toast.error("No available rooms found after 20 seconds. Please try again or create a new room.");
       }
-
-      const success = await joinExistingRoom(availableRoom.id, session.user.id);
-      if (success) {
-        navigate(`/chat/${availableRoom.id}`, { replace: true });
-      }
+      
+      setIsJoiningRoom(false);
     } catch (error) {
       console.error('Error joining room:', error);
       toast.error("Failed to join room. Please try again.");
+      setIsJoiningRoom(false);
     }
   };
 
@@ -118,7 +147,7 @@ const Index = () => {
                 size="lg"
                 className="w-full"
                 onClick={handleCreateRoom}
-                disabled={isCreatingRoom}
+                disabled={isCreatingRoom || isJoiningRoom}
               >
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Create Room
@@ -128,7 +157,7 @@ const Index = () => {
                 variant="secondary"
                 className="w-full"
                 onClick={handleJoinRoom}
-                disabled={isCreatingRoom}
+                disabled={isCreatingRoom || isJoiningRoom}
               >
                 <UserPlus className="mr-2 h-5 w-5" />
                 Join Room
