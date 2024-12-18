@@ -132,12 +132,16 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         return;
       }
 
-      // Update room with both participants, ensuring no duplicates
-      const uniqueParticipants = Array.from(new Set([userId, matchedUser.user_id]));
-      
+      // Update room with both participants
       const { error: updateError } = await supabase
         .from('chat_rooms')
-        .update({ participants: uniqueParticipants })
+        .update({ 
+          participants: [
+            ...currentRoom.participants.filter((p: string) => p !== matchedUser.user_id),
+            userId,
+            matchedUser.user_id
+          ]
+        })
         .eq('id', roomId);
 
       if (updateError) {
