@@ -89,7 +89,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId);
+        matchedUser = await findMatch(userId, roomId);
         
         if (!matchedUser) {
           matchAttempts++;
