@@ -17,24 +17,30 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Join waiting room
       await joinWaitingRoom(userId);
 
-      // Look for a match
-      const matchedUser = await findMatch(userId);
+      // Try finding a match for 20 seconds
+      let matchedUser = null;
+      let attempts = 0;
+      const maxAttempts = 20; // 20 attempts with 1 second delay = 20 seconds
       
+      while (!matchedUser && attempts < maxAttempts) {
+        console.log(`Match attempt ${attempts + 1} of ${maxAttempts}`);
+        matchedUser = await findMatch(userId);
+        if (!matchedUser) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between attempts
+          attempts++;
+        }
+      }
+
       if (!matchedUser) {
         await removeFromWaitingRoom([userId]);
-        toast.error("Couldn't find a match. Please try again.");
+        toast.error("Couldn't find a match after 20 seconds. Please try again.");
         navigate('/');
         return;
       }
 
-      // Get the existing room ID from the matched user
-      const { data: existingRoom } = await supabase
-        .from('chat_rooms')
-        .select('id')
-        .contains('participants', [matchedUser.user_id])
-        .single();
-
-      const targetRoomId = existingRoom?.id || roomId;
+      // Let the first user (who's been waiting longer) be the room creator
+      const shouldCreateRoom = matchedUser.created_at > new Date().toISOString();
+      const targetRoomId = shouldCreateRoom ? roomId : matchedUser.room_id;
 
       // Update room with both participants
       const { error: updateError } = await supabase
