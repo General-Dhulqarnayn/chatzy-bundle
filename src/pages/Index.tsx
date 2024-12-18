@@ -6,7 +6,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import RoomSelectionForm from "@/components/chat/RoomSelectionForm";
-import { useRoomManagement } from "@/hooks/useRoomManagement";
 
 const Index = () => {
   const { session } = useAuth();
@@ -14,7 +13,6 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
-  const { findAvailableRoom, joinExistingRoom } = useRoomManagement();
 
   const handleCreateRoom = async () => {
     if (!session?.user?.id) {
@@ -24,6 +22,7 @@ const Index = () => {
 
     try {
       setIsCreatingRoom(true);
+      console.log('Creating new room with user:', session.user.id);
       
       const { data: room, error: createError } = await supabase
         .from('chat_rooms')
@@ -37,12 +36,14 @@ const Index = () => {
       if (createError) throw createError;
       if (!room?.id) throw new Error('No room created');
 
+      console.log('Room created successfully:', room.id);
       toast.success("Room created! Waiting for someone to join...");
-      navigate(`/chat/${room.id}`, { replace: true });
+      navigate(`/chat/${room.id}`);
 
     } catch (error) {
       console.error('Error creating room:', error);
       toast.error("Failed to create room. Please try again.");
+    } finally {
       setIsCreatingRoom(false);
     }
   };
@@ -55,22 +56,48 @@ const Index = () => {
 
     try {
       setIsJoiningRoom(true);
-      const availableRoom = await findAvailableRoom(selectedCategory);
+      console.log('Looking for available room in category:', selectedCategory);
       
-      if (availableRoom) {
-        const success = await joinExistingRoom(availableRoom.id, session.user.id);
-        if (success) {
-          toast.success("Room joined successfully!");
-          navigate(`/chat/${availableRoom.id}`, { replace: true });
-          return;
-        }
+      // Find a room with exactly one participant
+      const { data: rooms, error: findError } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .eq('subject_category', selectedCategory)
+        .not('participants', 'is', null);
+
+      if (findError) throw findError;
+
+      const availableRoom = rooms?.find(room => 
+        Array.isArray(room.participants) && 
+        room.participants.length === 1 &&
+        !room.participants.includes(session.user.id)
+      );
+
+      if (!availableRoom) {
+        console.log('No available rooms found');
+        toast.error("No available rooms found. Please try again or create a new room.");
+        return;
       }
-      
-      toast.error("No available rooms found. Please try again or create a new room.");
-      setIsJoiningRoom(false);
+
+      console.log('Found available room:', availableRoom.id);
+
+      // Update room participants
+      const updatedParticipants = [...availableRoom.participants, session.user.id];
+      const { error: updateError } = await supabase
+        .from('chat_rooms')
+        .update({ participants: updatedParticipants })
+        .eq('id', availableRoom.id);
+
+      if (updateError) throw updateError;
+
+      console.log('Successfully joined room:', availableRoom.id);
+      toast.success("Room joined successfully!");
+      navigate(`/chat/${availableRoom.id}`);
+
     } catch (error) {
       console.error('Error joining room:', error);
       toast.error("Failed to join room. Please try again.");
+    } finally {
       setIsJoiningRoom(false);
     }
   };
