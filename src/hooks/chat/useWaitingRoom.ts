@@ -19,8 +19,8 @@ export const useWaitingRoom = () => {
       }
 
       if (existing) {
-        console.log('User already in waiting room, removing old entry');
-        await removeFromWaitingRoom([userId]);
+        console.log('User already in waiting room');
+        return;
       }
 
       const { error: insertError } = await supabase
@@ -49,6 +49,7 @@ export const useWaitingRoom = () => {
         .from('waiting_room')
         .select('*')
         .neq('user_id', userId)
+        .limit(1)
         .order('created_at', { ascending: true });
 
       if (matchError) {
@@ -58,12 +59,9 @@ export const useWaitingRoom = () => {
 
       console.log('Available matches:', waitingUsers);
 
-      // Find the earliest waiting user that isn't the current user
-      const match = waitingUsers?.[0];
-      
-      if (match) {
-        console.log('Found potential match:', match);
-        return match;
+      if (waitingUsers && waitingUsers.length > 0) {
+        console.log('Found potential match:', waitingUsers[0]);
+        return waitingUsers[0];
       }
 
       console.log('No matches found');
@@ -75,6 +73,8 @@ export const useWaitingRoom = () => {
   };
 
   const removeFromWaitingRoom = async (userIds: string[]) => {
+    if (!userIds.length) return;
+    
     try {
       console.log('Removing users from waiting room:', userIds);
       

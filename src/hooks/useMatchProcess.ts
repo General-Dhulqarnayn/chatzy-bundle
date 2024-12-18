@@ -30,7 +30,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         return;
       }
 
-      // Check if the room exists
+      // Check if the room exists and its current state
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .select('participants')
@@ -62,10 +62,6 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
           return;
         }
       }
-
-      // Clean up any existing waiting room entries
-      console.log('Cleaning up existing waiting room entries');
-      await removeFromWaitingRoom([userId]);
 
       // Join waiting room
       console.log('Joining waiting room');
