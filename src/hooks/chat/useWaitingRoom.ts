@@ -45,29 +45,32 @@ export const useWaitingRoom = () => {
     try {
       console.log('Looking for match for user:', userId);
       
-      // Get all waiting users except current user
+      // Get all waiting users except current user, ordered by creation time
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
         .select('*')
         .neq('user_id', userId)
         .order('created_at', { ascending: true })
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (matchError) {
+      if (matchError && matchError.code !== 'PGRST116') {
         console.error('Error finding match:', matchError);
         throw matchError;
       }
 
-      console.log('Available matches:', waitingUsers);
-
-      if (waitingUsers && waitingUsers.length > 0) {
-        console.log('Found potential match:', waitingUsers[0]);
-        return waitingUsers[0];
+      if (waitingUsers) {
+        console.log('Found potential match:', waitingUsers);
+        return waitingUsers;
       }
 
       console.log('No matches found');
       return null;
     } catch (error) {
+      if (error.code === 'PGRST116') {
+        console.log('No matches available');
+        return null;
+      }
       console.error('Error in findMatch:', error);
       throw error;
     }
@@ -86,7 +89,7 @@ export const useWaitingRoom = () => {
 
       if (error) {
         console.error('Error removing from waiting room:', error);
-        throw error;
+        return;
       }
 
       console.log('Successfully removed users from waiting room');

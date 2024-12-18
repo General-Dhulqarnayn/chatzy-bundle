@@ -87,8 +87,8 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       if (!matchedUser) {
         console.log('No match found after all attempts');
-        toast.error("Couldn't find a match. Please try again.");
         await removeFromWaitingRoom([userId]);
+        toast.error("Couldn't find a match. Please try again.");
         navigate('/');
         return;
       }
@@ -110,7 +110,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Successfully updated room with both participants');
 
-      // Clean up waiting room
+      // Clean up waiting room entries for both users
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
       
       toast.success("Match found! Starting chat...");
