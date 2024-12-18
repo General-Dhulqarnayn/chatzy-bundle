@@ -9,7 +9,7 @@ export const useWaitingRoom = () => {
       // First check if user is already in waiting room
       const { data: existing, error: checkError } = await supabase
         .from('waiting_room')
-        .select('*')
+        .select('id')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -58,6 +58,8 @@ export const useWaitingRoom = () => {
         console.error('Error finding match:', matchError);
         return null;
       }
+
+      console.log('Available matches:', waitingUsers ? [waitingUsers] : []);
 
       if (waitingUsers) {
         console.log('Found potential match:', waitingUsers);
