@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Calculator, BookOpen, Beaker, PlusCircle, UserPlus } from "lucide-react";
+import { PlusCircle, UserPlus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import RoomSelectionForm from "@/components/chat/RoomSelectionForm";
+import { useRoomManagement } from "@/hooks/useRoomManagement";
 
 const Index = () => {
   const { session } = useAuth();
@@ -14,6 +14,7 @@ const Index = () => {
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const { joinExistingRoom } = useRoomManagement();
 
   const previousChatId = location.state?.from?.split('/chat/')?.[1];
 
@@ -24,6 +25,11 @@ const Index = () => {
   }, [previousChatId, navigate]);
 
   const handleCreateRoom = async () => {
+    if (!session?.user?.id) {
+      toast.error("Please sign in to create a room");
+      return;
+    }
+
     try {
       setIsCreatingRoom(true);
       toast.loading("Creating room and waiting for participants...");
@@ -31,7 +37,7 @@ const Index = () => {
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert([{ 
-          participants: [],
+          participants: [session.user.id],
           subject_category: selectedCategory 
         }])
         .select('id')
@@ -89,6 +95,11 @@ const Index = () => {
   };
 
   const handleJoinRoom = async () => {
+    if (!session?.user?.id) {
+      toast.error("Please sign in to join a room");
+      return;
+    }
+
     try {
       const { data: availableRoom, error: roomError } = await supabase
         .from('chat_rooms')
@@ -108,7 +119,10 @@ const Index = () => {
         return;
       }
 
-      navigate(`/chat/${availableRoom.id}`, { replace: true });
+      const success = await joinExistingRoom(availableRoom.id, session.user.id);
+      if (success) {
+        navigate(`/chat/${availableRoom.id}`, { replace: true });
+      }
     } catch (error) {
       console.error('Error joining room:', error);
       toast.error("Failed to join room. Please try again.");
@@ -128,41 +142,10 @@ const Index = () => {
         </p>
         
         <div className="max-w-xs mx-auto space-y-6 slide-up animation-delay-200">
-          <RadioGroup
-            defaultValue="general"
-            value={selectedCategory}
-            onValueChange={setSelectedCategory}
-            className="grid grid-cols-2 gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="general" id="general" />
-              <Label htmlFor="general" className="flex items-center space-x-2">
-                <MessageSquare className="h-4 w-4" />
-                <span>General</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="maths" id="maths" />
-              <Label htmlFor="maths" className="flex items-center space-x-2">
-                <Calculator className="h-4 w-4" />
-                <span>Maths</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="english" id="english" />
-              <Label htmlFor="english" className="flex items-center space-x-2">
-                <BookOpen className="h-4 w-4" />
-                <span>English</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="science" id="science" />
-              <Label htmlFor="science" className="flex items-center space-x-2">
-                <Beaker className="h-4 w-4" />
-                <span>Science</span>
-              </Label>
-            </div>
-          </RadioGroup>
+          <RoomSelectionForm 
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+          />
 
           <div className="space-y-4">
             {previousChatId && (
