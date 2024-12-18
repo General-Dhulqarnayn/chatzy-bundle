@@ -18,6 +18,7 @@ export const useWaitingRoom = () => {
         throw checkError;
       }
 
+      // If user is already in waiting room, don't add them again
       if (existing) {
         console.log('User already in waiting room');
         return;
@@ -49,8 +50,8 @@ export const useWaitingRoom = () => {
         .from('waiting_room')
         .select('*')
         .neq('user_id', userId)
-        .limit(1)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(1);
 
       if (matchError) {
         console.error('Error finding match:', matchError);
@@ -91,7 +92,6 @@ export const useWaitingRoom = () => {
       console.log('Successfully removed users from waiting room');
     } catch (error) {
       console.error('Error in removeFromWaitingRoom:', error);
-      // Don't throw here as this is often called during cleanup
     }
   };
 
