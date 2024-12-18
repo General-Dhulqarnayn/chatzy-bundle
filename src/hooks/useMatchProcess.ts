@@ -27,13 +27,22 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         return;
       }
 
+      // Get the existing room ID from the matched user
+      const { data: existingRoom } = await supabase
+        .from('chat_rooms')
+        .select('id')
+        .contains('participants', [matchedUser.user_id])
+        .single();
+
+      const targetRoomId = existingRoom?.id || roomId;
+
       // Update room with both participants
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
           participants: [userId, matchedUser.user_id]
         })
-        .eq('id', roomId);
+        .eq('id', targetRoomId);
 
       if (updateError) {
         await removeFromWaitingRoom([userId]);
@@ -42,6 +51,11 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       // Only remove from waiting room after successful match
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
+      
+      // Navigate to the correct room
+      if (targetRoomId !== roomId) {
+        navigate(`/chat/${targetRoomId}`, { replace: true });
+      }
       
       toast.success("Match found! Starting chat...");
     } catch (error) {
