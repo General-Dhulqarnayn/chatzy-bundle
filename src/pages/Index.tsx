@@ -24,9 +24,9 @@ const Index = () => {
 
     try {
       setIsCreatingRoom(true);
-      const toastId = toast.loading("Creating room and waiting for participants...");
-
-      const { data: room, error: roomError } = await supabase
+      
+      // First create the room and add the current user
+      const { data: room, error: createError } = await supabase
         .from('chat_rooms')
         .insert([{ 
           participants: [session.user.id],
@@ -35,34 +35,12 @@ const Index = () => {
         .select('id')
         .single();
 
-      if (roomError) throw roomError;
-      if (!room) throw new Error('No room created');
+      if (createError) throw createError;
+      if (!room?.id) throw new Error('No room created');
 
-      // Wait for 20 seconds for someone to join
-      setTimeout(async () => {
-        const { data: updatedRoom } = await supabase
-          .from('chat_rooms')
-          .select('participants')
-          .eq('id', room.id)
-          .single();
-
-        if (!updatedRoom || updatedRoom.participants.length < 2) {
-          // Delete the room if no one joined
-          await supabase
-            .from('chat_rooms')
-            .delete()
-            .eq('id', room.id);
-          
-          toast.dismiss(toastId);
-          toast.error("No one joined the room. Please try again.");
-          setIsCreatingRoom(false);
-          return;
-        }
-
-        toast.dismiss(toastId);
-        toast.success("Room created and participant joined!");
-        navigate(`/chat/${room.id}`, { replace: true });
-      }, 20000);
+      // Immediately navigate to the chat room
+      toast.success("Room created! Waiting for someone to join...");
+      navigate(`/chat/${room.id}`, { replace: true });
 
     } catch (error) {
       console.error('Error creating room:', error);
@@ -98,9 +76,7 @@ const Index = () => {
           }
         }
         
-        // Check if we've been searching for less than 20 seconds
         if (Date.now() - startTime < timeoutDuration) {
-          // Wait for 1 second before trying again
           await new Promise(resolve => setTimeout(resolve, 1000));
           return findRoom();
         }
@@ -112,7 +88,7 @@ const Index = () => {
       
       if (!found) {
         toast.dismiss(toastId);
-        toast.error("No available rooms found after 20 seconds. Please try again or create a new room.");
+        toast.error("No available rooms found. Please try again or create a new room.");
       }
       
       setIsJoiningRoom(false);

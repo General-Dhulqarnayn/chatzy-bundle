@@ -58,13 +58,12 @@ export const useRoomManagement = () => {
     try {
       console.log('Looking for available room in category:', category);
       
-      // Get rooms in the specified category
+      // Get rooms in the specified category with exactly one participant
       const { data: rooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', category)
-        .not('participants', 'is', null)
-        .limit(10); // Get multiple rooms to check
+        .not('participants', 'is', null);
 
       if (error) {
         console.error('Error finding room:', error);
