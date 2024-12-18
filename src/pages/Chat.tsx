@@ -13,69 +13,53 @@ const Chat = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const [otherUser, setOtherUser] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
-  const [canSendMessages, setCanSendMessages] = useState(false);
+  const [isRoomReady, setIsRoomReady] = useState(false);
   const { messages, sendMessage } = useMessages(roomId!);
 
   useEffect(() => {
-    const checkRoomAndFetchProfile = async () => {
-      if (!roomId || !session?.user?.id) {
-        console.log('Missing required data:', { roomId, userId: session?.user?.id });
+    if (!roomId || !session?.user?.id) {
+      console.log('Missing required data:', { roomId, userId: session?.user?.id });
+      navigate('/');
+      return;
+    }
+
+    const checkRoomStatus = async () => {
+      const { data: room } = await supabase
+        .from('chat_rooms')
+        .select('participants')
+        .eq('id', roomId)
+        .single();
+
+      if (!room?.participants?.includes(session.user.id)) {
+        console.log('User not in room');
+        toast.error("You're not a participant in this room");
+        navigate('/');
         return;
       }
 
-      try {
-        console.log('Checking room participants...');
-        const { data: room, error: roomError } = await supabase
-          .from('chat_rooms')
-          .select('participants')
-          .eq('id', roomId)
-          .single();
+      const hasTwoParticipants = room.participants.length === 2;
+      setIsRoomReady(hasTwoParticipants);
 
-        if (roomError) {
-          console.error('Error fetching room:', roomError);
-          toast.error("Failed to load chat room");
-          return;
+      if (hasTwoParticipants) {
+        const otherUserId = room.participants.find(id => id !== session.user.id);
+        if (otherUserId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', otherUserId)
+            .single();
+          
+          setOtherUser(profile);
         }
-
-        if (!room?.participants) {
-          console.log('No participants found in room');
-          return;
-        }
-
-        console.log('Room participants:', room.participants);
-        const isUserInRoom = room.participants.includes(session.user.id);
-        const hasTwoParticipants = room.participants.length === 2;
-        
-        if (isUserInRoom && hasTwoParticipants) {
-          setCanSendMessages(true);
-          const otherUserId = room.participants.find(id => id !== session.user.id);
-          if (otherUserId) {
-            console.log('Fetching other user profile:', otherUserId);
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('id', otherUserId)
-              .single();
-
-            if (profileError) {
-              console.error('Error fetching profile:', profileError);
-            } else {
-              console.log('Other user profile:', profile);
-              setOtherUser(profile);
-            }
-          }
-        } else {
-          setCanSendMessages(false);
-        }
-      } catch (error) {
-        console.error('Error in checkRoomAndFetchProfile:', error);
       }
     };
 
-    checkRoomAndFetchProfile();
+    // Initial check
+    checkRoomStatus();
 
+    // Subscribe to room changes
     const channel = supabase
-      .channel(`room-${roomId}`)
+      .channel(`room:${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -85,26 +69,21 @@ const Chat = () => {
           filter: `id=eq.${roomId}`
         },
         () => {
-          console.log('Room update received, checking room status...');
-          checkRoomAndFetchProfile();
+          checkRoomStatus();
         }
       )
-      .subscribe((status) => {
-        console.log('Room subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up room subscription');
       supabase.removeChannel(channel);
     };
-  }, [roomId, session?.user?.id]);
+  }, [roomId, session?.user?.id, navigate]);
 
   const handleSendMessage = async (content: string) => {
-    if (!session?.user?.id) {
-      console.log('No user ID available for sending message');
+    if (!session?.user?.id || !isRoomReady) {
+      console.log('Cannot send message:', { userId: session?.user?.id, isRoomReady });
       return;
     }
-    console.log('Sending message:', { content, userId: session.user.id });
     await sendMessage(content, session.user.id);
   };
 
@@ -112,7 +91,6 @@ const Chat = () => {
     if (!roomId || !session?.user?.id) return;
 
     try {
-      console.log('Leaving chat room:', roomId);
       const { data: room } = await supabase
         .from('chat_rooms')
         .select('participants')
@@ -122,15 +100,12 @@ const Chat = () => {
       if (room && Array.isArray(room.participants)) {
         const updatedParticipants = room.participants.filter(id => id !== session.user.id);
 
-        const { error } = await supabase
+        await supabase
           .from('chat_rooms')
           .update({ participants: updatedParticipants })
           .eq('id', roomId);
 
-        if (error) throw error;
-
-        console.log('Successfully left chat room');
-        toast.success("Successfully left the chat");
+        toast.success("Left the chat room");
         navigate('/');
       }
     } catch (error) {
@@ -141,20 +116,18 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      {!canSendMessages && (
+      {!isRoomReady ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
             <p className="text-lg">Waiting for another user to join...</p>
           </div>
         </div>
-      )}
-      
-      {canSendMessages && (
+      ) : (
         <>
           <ChatHeader otherUser={otherUser} onLeaveChat={handleLeaveChat} />
           <MessageList messages={messages} currentUserId={session?.user?.id} />
-          <MessageInput onSendMessage={handleSendMessage} disabled={!canSendMessages} />
+          <MessageInput onSendMessage={handleSendMessage} disabled={!isRoomReady} />
         </>
       )}
     </div>

@@ -9,7 +9,7 @@ export const useRoomManagement = () => {
         .from('chat_rooms')
         .select('participants')
         .eq('id', roomId)
-        .maybeSingle();
+        .single();
 
       if (!currentRoom) {
         console.log('Room not found');
@@ -17,20 +17,25 @@ export const useRoomManagement = () => {
       }
 
       const currentParticipants = Array.isArray(currentRoom.participants) ? currentRoom.participants : [];
-      const uniqueParticipants = [...new Set([...currentParticipants, userId])];
       
-      console.log('Current room state:', { currentParticipants, uniqueParticipants });
+      // Check if user is already in the room
+      if (currentParticipants.includes(userId)) {
+        console.log('User already in room');
+        return true;
+      }
       
-      if (uniqueParticipants.length > 2) {
+      // Only allow two participants
+      if (currentParticipants.length >= 2) {
         console.log('Room is full');
         return false;
       }
       
+      const uniqueParticipants = [...new Set([...currentParticipants, userId])];
+      console.log('Updating room participants:', uniqueParticipants);
+      
       const { error: updateError } = await supabase
         .from('chat_rooms')
-        .update({ 
-          participants: uniqueParticipants 
-        })
+        .update({ participants: uniqueParticipants })
         .eq('id', roomId);
 
       if (updateError) {
@@ -61,10 +66,10 @@ export const useRoomManagement = () => {
         return null;
       }
 
+      // Find a room with exactly one participant
       const availableRoom = rooms?.find(room => 
         Array.isArray(room.participants) && 
-        room.participants.length === 1 &&
-        room.participants[0] !== null
+        room.participants.length === 1
       );
 
       console.log('Available room found:', availableRoom);
