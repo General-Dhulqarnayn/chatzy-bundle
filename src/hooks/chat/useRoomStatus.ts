@@ -17,7 +17,7 @@ export const useRoomStatus = (roomId: string, userId: string | undefined) => {
       .from('chat_rooms')
       .select('participants')
       .eq('id', roomId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error checking room status:', error);

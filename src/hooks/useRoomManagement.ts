@@ -4,6 +4,8 @@ import { toast } from "sonner";
 export const useRoomManagement = () => {
   const joinExistingRoom = async (roomId: string, userId: string) => {
     try {
+      console.log('Attempting to join room:', { roomId, userId });
+      
       // First get current participants
       const { data: currentRoom } = await supabase
         .from('chat_rooms')
@@ -12,6 +14,7 @@ export const useRoomManagement = () => {
         .maybeSingle();
 
       if (!currentRoom) {
+        console.log('Room not found');
         toast.error("Room not found");
         return false;
       }
@@ -20,8 +23,11 @@ export const useRoomManagement = () => {
       const currentParticipants = Array.isArray(currentRoom.participants) ? currentRoom.participants : [];
       const uniqueParticipants = [...new Set([...currentParticipants, userId])];
       
+      console.log('Current room state:', { currentParticipants, uniqueParticipants });
+      
       // Only allow max 2 participants
       if (uniqueParticipants.length > 2) {
+        console.log('Room is full');
         toast.error("Room is full");
         return false;
       }
@@ -39,6 +45,7 @@ export const useRoomManagement = () => {
         return false;
       }
 
+      console.log('Successfully joined room');
       return true;
     } catch (error) {
       console.error('Error joining room:', error);
@@ -49,27 +56,29 @@ export const useRoomManagement = () => {
 
   const findAvailableRoom = async (category: string) => {
     try {
-      // Query for rooms with exactly one participant
+      console.log('Looking for available room in category:', category);
+      
+      // Get rooms in the specified category
       const { data: rooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', category)
-        .neq('participants', '{}')  // Not empty
-        .filter('participants', 'ov', '[]')  // Has any participants
-        .limit(1)
-        .maybeSingle();
+        .not('participants', 'is', null)
+        .limit(10); // Get multiple rooms to check
 
       if (error) {
         console.error('Error finding room:', error);
         return null;
       }
 
-      // Additional check to ensure we only return rooms with exactly one participant
-      if (rooms && Array.isArray(rooms.participants) && rooms.participants.length === 1) {
-        return rooms;
-      }
+      // Find the first room with exactly one participant
+      const availableRoom = rooms?.find(room => 
+        Array.isArray(room.participants) && 
+        room.participants.length === 1
+      );
 
-      return null;
+      console.log('Available room found:', availableRoom);
+      return availableRoom || null;
     } catch (error) {
       console.error('Error finding room:', error);
       return null;
