@@ -25,7 +25,6 @@ const Index = () => {
     try {
       setIsCreatingRoom(true);
       
-      // First create the room and add the current user
       const { data: room, error: createError } = await supabase
         .from('chat_rooms')
         .insert([{ 
@@ -38,7 +37,6 @@ const Index = () => {
       if (createError) throw createError;
       if (!room?.id) throw new Error('No room created');
 
-      // Immediately navigate to the chat room
       toast.success("Room created! Waiting for someone to join...");
       navigate(`/chat/${room.id}`, { replace: true });
 
@@ -59,11 +57,16 @@ const Index = () => {
       setIsJoiningRoom(true);
       const toastId = toast.loading("Searching for available rooms...");
       
-      // Try to find a room for 20 seconds
+      // Try to find a room for 60 seconds with multiple attempts
       const startTime = Date.now();
-      const timeoutDuration = 20000; // 20 seconds
+      const timeoutDuration = 60000; // 60 seconds
+      const maxAttempts = 10;
+      let attempts = 0;
       
       const findRoom = async () => {
+        attempts++;
+        console.log(`Attempt ${attempts} to find room...`);
+        
         const availableRoom = await findAvailableRoom(selectedCategory);
         
         if (availableRoom) {
@@ -76,8 +79,11 @@ const Index = () => {
           }
         }
         
-        if (Date.now() - startTime < timeoutDuration) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // Continue searching if we haven't exceeded time limit and max attempts
+        if (Date.now() - startTime < timeoutDuration && attempts < maxAttempts) {
+          // Increase wait time between attempts
+          const waitTime = Math.min(2000 * attempts, 5000); // Start with 2s, max 5s
+          await new Promise(resolve => setTimeout(resolve, waitTime));
           return findRoom();
         }
         
@@ -88,7 +94,7 @@ const Index = () => {
       
       if (!found) {
         toast.dismiss(toastId);
-        toast.error("No available rooms found. Please try again or create a new room.");
+        toast.error(`No available rooms found after ${attempts} attempts. Please try again or create a new room.`);
       }
       
       setIsJoiningRoom(false);

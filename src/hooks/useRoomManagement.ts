@@ -15,7 +15,6 @@ export const useRoomManagement = () => {
 
       if (!currentRoom) {
         console.log('Room not found');
-        toast.error("Room not found");
         return false;
       }
 
@@ -28,7 +27,6 @@ export const useRoomManagement = () => {
       // Only allow max 2 participants
       if (uniqueParticipants.length > 2) {
         console.log('Room is full');
-        toast.error("Room is full");
         return false;
       }
       
@@ -41,7 +39,6 @@ export const useRoomManagement = () => {
 
       if (updateError) {
         console.error('Error updating room:', updateError);
-        toast.error("Failed to join room");
         return false;
       }
 
@@ -49,7 +46,6 @@ export const useRoomManagement = () => {
       return true;
     } catch (error) {
       console.error('Error joining room:', error);
-      toast.error("Failed to join room");
       return false;
     }
   };
@@ -70,10 +66,11 @@ export const useRoomManagement = () => {
         return null;
       }
 
-      // Find the first room with exactly one participant
+      // Find a room with exactly one participant
       const availableRoom = rooms?.find(room => 
         Array.isArray(room.participants) && 
-        room.participants.length === 1
+        room.participants.length === 1 &&
+        room.participants[0] !== null // Ensure the participant is valid
       );
 
       console.log('Available room found:', availableRoom);
