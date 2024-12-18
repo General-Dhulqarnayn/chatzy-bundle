@@ -38,6 +38,7 @@ const Chat = () => {
         if (roomError) {
           console.error('Error fetching room:', roomError);
           toast.error("Failed to load chat room");
+          navigate('/');
           return;
         }
 
@@ -50,6 +51,12 @@ const Chat = () => {
         const isUserInRoom = room.participants.includes(session.user.id);
         const hasTwoParticipants = room.participants.length === 2;
         
+        if (!isUserInRoom) {
+          console.log('User not in room, redirecting...');
+          navigate('/');
+          return;
+        }
+
         if (isUserInRoom && hasTwoParticipants) {
           setCanSendMessages(true);
           // Fetch other user's profile
@@ -105,7 +112,7 @@ const Chat = () => {
       console.log('Cleaning up room subscription');
       supabase.removeChannel(channel);
     };
-  }, [roomId, session?.user?.id, isMatched]);
+  }, [roomId, session?.user?.id, isMatched, navigate]);
 
   const handleSendMessage = async (content: string) => {
     if (!session?.user?.id) {
