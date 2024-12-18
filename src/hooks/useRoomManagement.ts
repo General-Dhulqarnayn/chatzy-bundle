@@ -16,15 +16,20 @@ export const useRoomManagement = () => {
         return false;
       }
 
-      // Ensure participants is an array and properly formatted for Postgres
-      const updatedParticipants = Array.isArray(currentRoom.participants) 
-        ? [...currentRoom.participants, userId]
-        : [userId];
+      // Ensure participants is an array and remove duplicates
+      const currentParticipants = Array.isArray(currentRoom.participants) ? currentRoom.participants : [];
+      const uniqueParticipants = [...new Set([...currentParticipants, userId])];
+      
+      // Only allow max 2 participants
+      if (uniqueParticipants.length > 2) {
+        toast.error("Room is full");
+        return false;
+      }
       
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
-          participants: updatedParticipants 
+          participants: uniqueParticipants 
         })
         .eq('id', roomId);
 
@@ -44,12 +49,13 @@ export const useRoomManagement = () => {
 
   const findAvailableRoom = async (category: string) => {
     try {
-      // Query for rooms with less than 2 participants using array length
-      const { data: room, error } = await supabase
+      // Query for rooms with exactly 1 participant
+      const { data: rooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', category)
         .filter('participants', 'cs', '{}')
+        .lt('participants', '{1,2}')
         .limit(1)
         .maybeSingle();
 
@@ -58,7 +64,7 @@ export const useRoomManagement = () => {
         return null;
       }
 
-      return room;
+      return rooms;
     } catch (error) {
       console.error('Error finding room:', error);
       return null;

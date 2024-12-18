@@ -31,11 +31,25 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Match found, updating room participants...');
 
+      // Get current room participants
+      const { data: currentRoom } = await supabase
+        .from('chat_rooms')
+        .select('participants')
+        .eq('id', roomId)
+        .maybeSingle();
+
+      if (!currentRoom) {
+        throw new Error('Room not found');
+      }
+
+      // Ensure unique participants
+      const uniqueParticipants = [...new Set([userId, matchedUser.user_id])];
+      
       // Update room with both participants
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
-          participants: [userId, matchedUser.user_id]
+          participants: uniqueParticipants
         })
         .eq('id', roomId);
 
