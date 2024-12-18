@@ -56,7 +56,7 @@ export const useRoomManagement = () => {
         .eq('subject_category', category)
         .not('participants', 'cs', '{}')  // Exclude empty participant arrays
         .filter('participants', 'ov', '["*"]')  // Has at least one participant
-        .filter('participants', 'ov', '["*", "*"]', 'not')  // But not two participants
+        .not('participants', 'cs', '{*,*}')  // Not two participants yet
         .limit(1)
         .maybeSingle();
 
