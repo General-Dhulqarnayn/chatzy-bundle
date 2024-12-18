@@ -6,8 +6,6 @@ export const useMessages = (roomId: string) => {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!roomId) return;
-    
     console.log('Initializing messages for room:', roomId);
     
     // Load existing messages
@@ -34,7 +32,7 @@ export const useMessages = (roomId: string) => {
     // Subscribe to new messages
     console.log('Setting up message subscription for room:', roomId);
     const channel = supabase
-      .channel(`messages:${roomId}`)
+      .channel(`messages-${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -45,14 +43,7 @@ export const useMessages = (roomId: string) => {
         },
         (payload) => {
           console.log('New message received:', payload);
-          setMessages(currentMessages => {
-            // Check if message already exists
-            const exists = currentMessages.some(msg => msg.id === payload.new.id);
-            if (exists) {
-              return currentMessages;
-            }
-            return [...currentMessages, payload.new];
-          });
+          setMessages(current => [...current, payload.new]);
         }
       )
       .subscribe((status) => {
@@ -66,14 +57,25 @@ export const useMessages = (roomId: string) => {
   }, [roomId]);
 
   const sendMessage = async (content: string, userId: string | undefined) => {
-    if (!content.trim() || !userId || !roomId) {
-      console.log('Invalid message, missing user ID or room ID');
+    if (!content.trim() || !userId) {
+      console.log('Invalid message or missing user ID');
       return;
     }
 
     console.log('Sending message:', { content, userId, roomId });
 
     try {
+      const newMessage = {
+        content,
+        chat_room_id: roomId,
+        user_id: userId,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString()
+      };
+
+      // Optimistically add the message to the UI
+      setMessages(current => [...current, newMessage]);
+
       const { error } = await supabase
         .from('messages')
         .insert([{
@@ -85,6 +87,10 @@ export const useMessages = (roomId: string) => {
       if (error) {
         console.error('Error sending message:', error);
         toast.error("Failed to send message");
+        // Remove the optimistically added message if there was an error
+        setMessages(current => current.filter(msg => msg.id !== newMessage.id));
+      } else {
+        console.log('Message sent successfully');
       }
     } catch (error) {
       console.error('Error sending message:', error);
