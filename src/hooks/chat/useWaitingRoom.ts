@@ -44,19 +44,7 @@ export const useWaitingRoom = () => {
     try {
       console.log('Looking for match for user:', userId);
       
-      // First get the subject category of the current room
-      const { data: room, error: roomError } = await supabase
-        .from('chat_rooms')
-        .select('subject_category')
-        .eq('id', roomId)
-        .single();
-
-      if (roomError) {
-        console.error('Error getting room category:', roomError);
-        throw roomError;
-      }
-
-      // Get all waiting users except current user who are looking for the same subject
+      // Get all waiting users except current user
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
         .select('*')

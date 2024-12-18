@@ -32,7 +32,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         return;
       }
 
-      // Check if the room exists and is available
+      // Check if the room exists
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .select('participants')
@@ -65,12 +65,6 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
           navigate('/');
           return;
         }
-      }
-
-      // If room is empty, add first participant
-      if (!room.participants || room.participants.length === 0) {
-        console.log('Adding first participant to room');
-        await addFirstParticipant(roomId, userId);
       }
 
       // Clean up any existing waiting room entries
@@ -109,38 +103,11 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Match found:', matchedUser);
 
-      // Verify room is still available
-      const { data: currentRoom } = await supabase
-        .from('chat_rooms')
-        .select('participants')
-        .eq('id', roomId)
-        .single();
-
-      if (!currentRoom) {
-        console.error('Room no longer exists');
-        toast.error("Chat room no longer exists");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
-      }
-
-      if (currentRoom.participants.length >= 2) {
-        console.log('Room is no longer available');
-        toast.error("Room is no longer available");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
-      }
-
-      // Update room with both participants
+      // Update room with both participants, ensuring no duplicates
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
-          participants: [
-            ...currentRoom.participants.filter((p: string) => p !== matchedUser.user_id),
-            userId,
-            matchedUser.user_id
-          ]
+          participants: [userId, matchedUser.user_id]
         })
         .eq('id', roomId);
 
