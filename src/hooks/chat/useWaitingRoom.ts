@@ -48,15 +48,15 @@ export const useWaitingRoom = () => {
       // Get all waiting users except current user, ordered by creation time
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
-        .select('*')
+        .select('id, user_id, created_at')
         .neq('user_id', userId)
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (matchError && matchError.code !== 'PGRST116') {
+      if (matchError) {
         console.error('Error finding match:', matchError);
-        throw matchError;
+        return null;
       }
 
       if (waitingUsers) {
@@ -67,12 +67,8 @@ export const useWaitingRoom = () => {
       console.log('No matches found');
       return null;
     } catch (error) {
-      if (error.code === 'PGRST116') {
-        console.log('No matches available');
-        return null;
-      }
       console.error('Error in findMatch:', error);
-      throw error;
+      return null;
     }
   };
 
