@@ -67,16 +67,6 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         }
       }
 
-      // If room is empty, add first participant
-      if (!room.participants || room.participants.length === 0) {
-        console.log('Adding first participant to room');
-        await addFirstParticipant(roomId, userId);
-      }
-
-      // Clean up any existing waiting room entries
-      console.log('Cleaning up existing waiting room entries');
-      await removeFromWaitingRoom([userId]);
-
       // Join waiting room
       console.log('Joining waiting room');
       await joinWaitingRoom(userId);
@@ -109,27 +99,10 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Match found:', matchedUser);
 
-      // Verify room is still available
-      const { data: currentRoom } = await supabase
-        .from('chat_rooms')
-        .select('participants')
-        .eq('id', roomId)
-        .single();
-
-      if (!currentRoom) {
-        console.error('Room no longer exists');
-        toast.error("Chat room no longer exists");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
-      }
-
-      if (currentRoom.participants.length >= 2) {
-        console.log('Room is no longer available');
-        toast.error("Room is no longer available");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
+      // If this user is the first one to be matched, create the room
+      if (!room.participants || room.participants.length === 0) {
+        console.log('Adding first participant to room');
+        await addFirstParticipant(roomId, userId);
       }
 
       // Update room with both participants, ensuring no duplicates
