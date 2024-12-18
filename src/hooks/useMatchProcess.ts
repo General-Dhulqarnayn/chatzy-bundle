@@ -105,18 +105,21 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       if (updateError) {
         console.error('Error updating room:', updateError);
+        // Only remove from waiting room if update fails
+        await removeFromWaitingRoom([userId]);
         throw updateError;
       }
 
       console.log('Successfully updated room with both participants');
 
-      // Clean up waiting room entries for both users
+      // Clean up waiting room entries for both users only after successful room update
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
       
       toast.success("Match found! Starting chat...");
     } catch (error) {
       console.error('Error in matchmaking:', error);
       toast.error("Failed to set up matchmaking");
+      // Only remove from waiting room if there's an error
       if (userId) {
         await removeFromWaitingRoom([userId]);
       }
