@@ -89,7 +89,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId, roomId);
+        matchedUser = await findMatch(userId);
         
         if (!matchedUser) {
           matchAttempts++;
@@ -109,47 +109,25 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Match found:', matchedUser);
 
-      // Verify room is still available
-      const { data: currentRoom } = await supabase
-        .from('chat_rooms')
-        .select('participants, subject_category')
-        .eq('id', roomId)
-        .single();
-
-      if (!currentRoom) {
-        console.error('Room no longer exists');
-        toast.error("Chat room no longer exists");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
-      }
-
-      if (currentRoom.participants.length >= 2) {
-        console.log('Room is no longer available');
-        toast.error("Room is no longer available");
-        await removeFromWaitingRoom([userId]);
-        navigate('/');
-        return;
-      }
-
-      // Update room with both participants
-      const { error: updateError } = await supabase
+      // Verify room is still available and update it atomically
+      const { data: updatedRoom, error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
-          participants: [
-            ...currentRoom.participants.filter((p: string) => p !== matchedUser.user_id),
-            userId,
-            matchedUser.user_id
-          ]
+          participants: [userId, matchedUser.user_id]
         })
-        .eq('id', roomId);
+        .eq('id', roomId)
+        .select()
+        .single();
 
-      if (updateError) {
+      if (updateError || !updatedRoom) {
         console.error('Error updating room:', updateError);
-        throw updateError;
+        toast.error("Failed to join chat room");
+        await removeFromWaitingRoom([userId, matchedUser.user_id]);
+        navigate('/');
+        return;
       }
 
-      console.log('Successfully updated room with both participants');
+      console.log('Successfully updated room with both participants:', updatedRoom);
 
       // Clean up waiting room
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
