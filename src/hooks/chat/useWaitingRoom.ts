@@ -40,7 +40,7 @@ export const useWaitingRoom = () => {
     }
   };
 
-  const findMatch = async (userId: string, roomId: string) => {
+  const findMatch = async (userId: string) => {
     try {
       console.log('Looking for match for user:', userId);
       

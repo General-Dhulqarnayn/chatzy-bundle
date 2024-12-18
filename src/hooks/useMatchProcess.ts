@@ -1,12 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useRoomManagement } from "./chat/useRoomManagement";
 import { useWaitingRoom } from "./chat/useWaitingRoom";
 
 export const useMatchProcess = (roomId: string, userId: string | undefined) => {
   const navigate = useNavigate();
-  const { addFirstParticipant } = useRoomManagement();
   const { joinWaitingRoom, findMatch, removeFromWaitingRoom } = useWaitingRoom();
 
   const startMatchmaking = async () => {
@@ -51,8 +49,6 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         return;
       }
 
-      console.log('Current room state:', room);
-
       // If room already has participants, verify if current user is one of them
       if (room.participants && room.participants.length > 0) {
         if (room.participants.includes(userId)) {
@@ -83,7 +79,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       while (matchAttempts < maxAttempts && !matchedUser) {
         console.log(`Match attempt ${matchAttempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId, roomId);
+        matchedUser = await findMatch(userId);
         
         if (!matchedUser) {
           matchAttempts++;
@@ -103,7 +99,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       console.log('Match found:', matchedUser);
 
-      // Update room with both participants, ensuring no duplicates
+      // Update room with both participants
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({ 
