@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Calculator, BookOpen, Beaker } from "lucide-react";
+import { MessageSquare, Calculator, BookOpen, Beaker, PlusCircle, UserPlus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,20 +14,16 @@ const Index = () => {
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('general');
 
-  // Check if we're coming from a chat route
   const previousChatId = location.state?.from?.split('/chat/')?.[1];
 
   useEffect(() => {
-    // If user was in a chat and didn't explicitly choose to start a new one,
-    // redirect them back to their chat
     if (previousChatId) {
       navigate(`/chat/${previousChatId}`);
     }
   }, [previousChatId, navigate]);
 
-  const handleStartChat = async () => {
+  const handleCreateRoom = async () => {
     try {
-      // Create a new chat room with selected category
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert([{ 
@@ -40,11 +36,38 @@ const Index = () => {
       if (roomError) throw roomError;
       if (!room) throw new Error('No room created');
 
-      // Navigate to the chat room where matchmaking will happen
       navigate(`/chat/${room.id}`, { replace: true });
     } catch (error) {
-      console.error('Error starting chat:', error);
-      toast.error("Failed to start chat. Please try again.");
+      console.error('Error creating room:', error);
+      toast.error("Failed to create room. Please try again.");
+    }
+  };
+
+  const handleJoinRoom = async () => {
+    try {
+      // Find an available room with no participants or only one participant
+      const { data: availableRoom, error: roomError } = await supabase
+        .from('chat_rooms')
+        .select('id')
+        .eq('subject_category', selectedCategory)
+        .lt('participants', 2)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (roomError && roomError.code !== 'PGRST116') {
+        throw roomError;
+      }
+
+      if (!availableRoom) {
+        toast.error("No available rooms found. Try creating one!");
+        return;
+      }
+
+      navigate(`/chat/${availableRoom.id}`, { replace: true });
+    } catch (error) {
+      console.error('Error joining room:', error);
+      toast.error("Failed to join room. Please try again.");
     }
   };
 
@@ -108,14 +131,25 @@ const Index = () => {
                 Return to Current Chat
               </Button>
             )}
-            <Button
-              size="lg"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleStartChat}
-            >
-              <MessageSquare className="mr-2 h-5 w-5" />
-              Start New Chat
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleCreateRoom}
+              >
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Create Room
+              </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                className="w-full"
+                onClick={handleJoinRoom}
+              >
+                <UserPlus className="mr-2 h-5 w-5" />
+                Join Room
+              </Button>
+            </div>
           </div>
         </div>
 
