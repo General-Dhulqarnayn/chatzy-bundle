@@ -55,7 +55,7 @@ export const useRoomManagement = () => {
         .select('*')
         .eq('subject_category', category)
         .neq('participants', '{}')  // Not empty
-        .filter('participants', 'cs', '{1}')  // Has exactly one participant
+        .filter('participants', 'ov', '[]')  // Has any participants
         .limit(1)
         .maybeSingle();
 
@@ -64,7 +64,12 @@ export const useRoomManagement = () => {
         return null;
       }
 
-      return rooms;
+      // Additional check to ensure we only return rooms with exactly one participant
+      if (rooms && Array.isArray(rooms.participants) && rooms.participants.length === 1) {
+        return rooms;
+      }
+
+      return null;
     } catch (error) {
       console.error('Error finding room:', error);
       return null;
