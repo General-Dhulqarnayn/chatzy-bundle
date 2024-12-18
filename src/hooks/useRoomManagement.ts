@@ -49,14 +49,13 @@ export const useRoomManagement = () => {
 
   const findAvailableRoom = async (category: string) => {
     try {
-      // Query for rooms with less than 2 participants
+      // Query for rooms with exactly one participant
       const { data: rooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', category)
-        .not('participants', 'cs', '{}')  // Exclude empty participant arrays
-        .filter('participants', 'ov', '["*"]')  // Has at least one participant
-        .not('participants', 'cs', '{*,*}')  // Not two participants yet
+        .neq('participants', '{}')  // Not empty
+        .filter('participants', 'cs', '{1}')  // Has exactly one participant
         .limit(1)
         .maybeSingle();
 
