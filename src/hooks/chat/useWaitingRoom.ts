@@ -48,7 +48,7 @@ export const useWaitingRoom = () => {
       // Get all waiting users except current user, ordered by creation time
       const { data: waitingUsers, error: matchError } = await supabase
         .from('waiting_room')
-        .select('*')
+        .select('id, user_id, created_at')
         .neq('user_id', userId)
         .order('created_at', { ascending: true })
         .limit(1)

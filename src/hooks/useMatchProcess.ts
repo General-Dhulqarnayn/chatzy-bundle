@@ -17,30 +17,15 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
       // Join waiting room
       await joinWaitingRoom(userId);
 
-      // Try finding a match for 20 seconds
-      let matchedUser = null;
-      let attempts = 0;
-      const maxAttempts = 20; // 20 attempts with 1 second delay = 20 seconds
+      // Look for a match
+      const matchedUser = await findMatch(userId);
       
-      while (!matchedUser && attempts < maxAttempts) {
-        console.log(`Match attempt ${attempts + 1} of ${maxAttempts}`);
-        matchedUser = await findMatch(userId);
-        if (!matchedUser) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between attempts
-          attempts++;
-        }
-      }
-
       if (!matchedUser) {
         await removeFromWaitingRoom([userId]);
-        toast.error("Couldn't find a match after 20 seconds. Please try again.");
+        toast.error("Couldn't find a match. Please try again.");
         navigate('/');
         return;
       }
-
-      // Let the first user (who's been waiting longer) be the room creator
-      const shouldCreateRoom = matchedUser.created_at > new Date().toISOString();
-      const targetRoomId = shouldCreateRoom ? roomId : matchedUser.room_id;
 
       // Update room with both participants
       const { error: updateError } = await supabase
@@ -48,7 +33,7 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
         .update({ 
           participants: [userId, matchedUser.user_id]
         })
-        .eq('id', targetRoomId);
+        .eq('id', roomId);
 
       if (updateError) {
         await removeFromWaitingRoom([userId]);
@@ -57,11 +42,6 @@ export const useMatchProcess = (roomId: string, userId: string | undefined) => {
 
       // Only remove from waiting room after successful match
       await removeFromWaitingRoom([userId, matchedUser.user_id]);
-      
-      // Navigate to the correct room
-      if (targetRoomId !== roomId) {
-        navigate(`/chat/${targetRoomId}`, { replace: true });
-      }
       
       toast.success("Match found! Starting chat...");
     } catch (error) {
