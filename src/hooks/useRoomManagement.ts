@@ -54,8 +54,9 @@ export const useRoomManagement = () => {
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', category)
-        .not('participants', 'cs', '{,}')  // Exclude empty participant arrays
-        .lt('participants', 'length', 2)   // Only rooms with less than 2 participants
+        .not('participants', 'cs', '{}')  // Exclude empty participant arrays
+        .filter('participants', 'ov', '["*"]')  // Has at least one participant
+        .filter('participants', 'ov', '["*", "*"]', 'not')  // But not two participants
         .limit(1)
         .maybeSingle();
 
