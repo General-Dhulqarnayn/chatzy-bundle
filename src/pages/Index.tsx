@@ -19,6 +19,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = React.useState('general');
   const [isJoining, setIsJoining] = React.useState(false);
+  const [joinCount, setJoinCount] = React.useState(0);
 
   const handleJoinRoom = async () => {
     if (!session?.user?.id) {
@@ -28,34 +29,60 @@ const Index = () => {
 
     try {
       setIsJoining(true);
-      console.log('Joining room for category:', selectedCategory);
+      console.log('Join attempt count:', joinCount, 'Creating room:', joinCount % 2 === 0);
       
       const roomId = ROOM_IDS[selectedCategory];
-      
-      // Check if room exists, if not create it
+
+      // Check if room exists
       const { data: existingRoom } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('id', roomId)
         .maybeSingle();
 
-      if (!existingRoom) {
-        console.log('Creating permanent room for category:', selectedCategory);
-        const { error: createError } = await supabase
-          .from('chat_rooms')
-          .insert([{
-            id: roomId,
-            subject_category: selectedCategory,
-            participants: [session.user.id]
-          }]);
+      // If it's an even number (including 0), create a new room
+      if (joinCount % 2 === 0) {
+        console.log('Creating new room for category:', selectedCategory);
+        if (!existingRoom) {
+          const { error: createError } = await supabase
+            .from('chat_rooms')
+            .insert([{
+              id: roomId,
+              subject_category: selectedCategory,
+              participants: [session.user.id]
+            }]);
 
-        if (createError) {
-          console.error('Error creating room:', createError);
-          throw createError;
+          if (createError) {
+            console.error('Error creating room:', createError);
+            throw createError;
+          }
+        } else {
+          // Reset participants if room exists
+          const { error: updateError } = await supabase
+            .from('chat_rooms')
+            .update({
+              participants: [session.user.id]
+            })
+            .eq('id', roomId);
+
+          if (updateError) {
+            console.error('Error updating room:', updateError);
+            throw updateError;
+          }
         }
       } else {
-        // Add user to existing room if not already present
+        // Odd number - join existing room if possible
+        if (!existingRoom) {
+          toast.error("No room available to join. Try again!");
+          return;
+        }
+
         const currentParticipants = existingRoom.participants || [];
+        if (currentParticipants.length >= 2) {
+          toast.error("Room is full. Try again!");
+          return;
+        }
+
         if (!currentParticipants.includes(session.user.id)) {
           const { error: updateError } = await supabase
             .from('chat_rooms')
@@ -71,13 +98,14 @@ const Index = () => {
         }
       }
 
-      console.log('Successfully joined room:', roomId);
-      toast.success("Room joined successfully!");
+      setJoinCount(prev => prev + 1);
+      console.log('Successfully processed room action:', roomId);
+      toast.success(joinCount % 2 === 0 ? "Room created successfully!" : "Room joined successfully!");
       navigate(`/chat/${roomId}`);
 
     } catch (error) {
-      console.error('Error joining room:', error);
-      toast.error("Failed to join room. Please try again.");
+      console.error('Error processing room action:', error);
+      toast.error("Failed to process room action. Please try again.");
     } finally {
       setIsJoining(false);
     }
@@ -109,7 +137,7 @@ const Index = () => {
               disabled={isJoining}
             >
               <UserPlus className="mr-2 h-5 w-5" />
-              {isJoining ? "Joining..." : "Join Room"}
+              {isJoining ? "Processing..." : (joinCount % 2 === 0 ? "Create Room" : "Join Room")}
             </Button>
           </div>
         </div>
