@@ -30,12 +30,17 @@ const CreateRoom = () => {
       console.log('Creating room with category:', selectedCategory);
 
       const newRoomId = `${selectedCategory}-${Date.now()}`;
+      
+      // Explicitly create the participants array with the creator's ID
+      const participants = [session.user.id];
+      console.log('Setting initial participants:', participants);
+
       const { error: createError } = await supabase
         .from('chat_rooms')
         .insert([{
           id: newRoomId,
           subject_category: selectedCategory,
-          participants: [session.user.id]
+          participants: participants // Explicitly set the array
         }]);
 
       if (createError) {
