@@ -17,7 +17,6 @@ const Chat = () => {
   const [isRoomReady, setIsRoomReady] = useState(false);
   const { messages, sendMessage } = useMessages(roomId!);
   
-  // Add the host status hook
   useHostStatus(roomId!);
 
   useEffect(() => {
@@ -26,6 +25,9 @@ const Chat = () => {
       navigate('/');
       return;
     }
+
+    // Store the active room ID
+    localStorage.setItem('activeRoomId', roomId);
 
     const checkRoomStatus = async () => {
       const { data: room } = await supabase
@@ -37,14 +39,15 @@ const Chat = () => {
       if (!room?.participants?.includes(session.user.id)) {
         console.log('User not in room');
         toast.error("You're not a participant in this room");
+        localStorage.removeItem('activeRoomId');
         navigate('/join-rooms');
         return;
       }
 
-      // Check if host is still in the room
       if (!room.host_id || !room.participants.includes(room.host_id)) {
         console.log('Host has left the room');
         toast.error("The host has ended this chat session");
+        localStorage.removeItem('activeRoomId');
         navigate('/join-rooms');
         return;
       }
@@ -118,6 +121,7 @@ const Chat = () => {
           .update({ participants: updatedParticipants })
           .eq('id', roomId);
 
+        localStorage.removeItem('activeRoomId');
         toast.success("Left the chat room");
         navigate('/join-rooms');
       }

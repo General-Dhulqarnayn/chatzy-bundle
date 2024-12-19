@@ -6,9 +6,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const isActive = (path: string) => location.pathname === path;
   
-  // Check if we're in a chat
-  const inChat = location.pathname.includes('/chat/');
-  const state = inChat ? { from: location.pathname } : undefined;
+  // Extract roomId from chat URL if present
+  const chatRoomId = location.pathname.startsWith('/chat/') 
+    ? location.pathname.split('/chat/')[1]
+    : localStorage.getItem('activeRoomId');
+
+  // Pass state to preserve the return path
+  const state = chatRoomId ? { from: `/chat/${chatRoomId}` } : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,14 +49,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               />
               <span className="text-xs mt-1 font-semibold">Create</span>
             </Link>
-            {inChat && (
+            {chatRoomId && (
               <Link
-                to={location.pathname}
-                className={`flex flex-col items-center transition-all group text-primary scale-110`}
+                to={`/chat/${chatRoomId}`}
+                className={`flex flex-col items-center transition-all group ${
+                  location.pathname === `/chat/${chatRoomId}`
+                    ? "text-primary scale-110"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
               >
                 <MessageCircle 
                   className="h-6 w-6 group-hover:scale-110 transition-transform" 
-                  strokeWidth={2.5} 
+                  strokeWidth={location.pathname === `/chat/${chatRoomId}` ? 2.5 : 1.5} 
                 />
                 <span className="text-xs mt-1 font-semibold">Chat</span>
               </Link>
