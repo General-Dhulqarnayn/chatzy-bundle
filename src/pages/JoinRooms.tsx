@@ -32,11 +32,11 @@ const JoinRooms = () => {
 
         if (error) throw error;
 
-        // Filter rooms that aren't full and user isn't already in
-        const availableRooms = data.filter(room => 
-          room.participants.length < 2 && 
-          !room.participants.includes(session?.user?.id || '')
-        );
+        // Filter rooms that aren't full
+        const availableRooms = data.filter(room => {
+          const participantCount = Array.isArray(room.participants) ? room.participants.length : 0;
+          return participantCount < 2;
+        });
 
         console.log('Available rooms:', availableRooms);
         setRooms(availableRooms);
@@ -89,19 +89,30 @@ const JoinRooms = () => {
         return;
       }
 
-      if (room.participants.length >= 2) {
+      const participants = Array.isArray(room.participants) ? room.participants : [];
+      
+      if (participants.length >= 2) {
         toast.error("Room is full");
+        return;
+      }
+
+      if (participants.includes(session.user.id)) {
+        console.log('User already in room, redirecting...');
+        navigate(`/chat/${roomId}`);
         return;
       }
 
       const { error: updateError } = await supabase
         .from('chat_rooms')
         .update({
-          participants: [...room.participants, session.user.id]
+          participants: [...participants, session.user.id]
         })
         .eq('id', roomId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error joining room:', updateError);
+        throw updateError;
+      }
 
       console.log('Successfully joined room:', roomId);
       toast.success("Joined room successfully!");
