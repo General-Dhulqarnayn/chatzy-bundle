@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { useMessages } from "@/hooks/useMessages";
+import { useHostStatus } from "@/hooks/chat/useHostStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -15,6 +16,9 @@ const Chat = () => {
   const [otherUser, setOtherUser] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
   const [isRoomReady, setIsRoomReady] = useState(false);
   const { messages, sendMessage } = useMessages(roomId!);
+  
+  // Add the host status hook
+  useHostStatus(roomId!);
 
   useEffect(() => {
     if (!roomId || !session?.user?.id) {
@@ -26,13 +30,21 @@ const Chat = () => {
     const checkRoomStatus = async () => {
       const { data: room } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, host_id')
         .eq('id', roomId)
         .single();
 
       if (!room?.participants?.includes(session.user.id)) {
         console.log('User not in room');
         toast.error("You're not a participant in this room");
+        navigate('/join-rooms');
+        return;
+      }
+
+      // Check if host is still in the room
+      if (!room.host_id || !room.participants.includes(room.host_id)) {
+        console.log('Host has left the room');
+        toast.error("The host has ended this chat session");
         navigate('/join-rooms');
         return;
       }
@@ -93,15 +105,14 @@ const Chat = () => {
     try {
       const { data: room } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, host_id')
         .eq('id', roomId)
         .single();
 
-      if (room && Array.isArray(room.participants)) {
+      if (room) {
         // Remove the current user from participants
         const updatedParticipants = room.participants.filter(id => id !== session.user.id);
         
-        // Update the room with the new participants list
         await supabase
           .from('chat_rooms')
           .update({ participants: updatedParticipants })
