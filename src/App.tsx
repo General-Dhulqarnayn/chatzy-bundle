@@ -8,7 +8,8 @@ import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
-import QuickMatch from "./pages/QuickMatch";
+import CreateRoom from "./pages/CreateRoom";
+import JoinRooms from "./pages/JoinRooms";
 import { AuthProvider } from "./components/AuthProvider";
 
 const queryClient = new QueryClient();
@@ -26,7 +27,8 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/chat/:roomId" element={<Chat />} />
-              <Route path="/quick-match" element={<QuickMatch />} />
+              <Route path="/create-room" element={<CreateRoom />} />
+              <Route path="/join-rooms" element={<JoinRooms />} />
             </Routes>
           </Layout>
         </AuthProvider>

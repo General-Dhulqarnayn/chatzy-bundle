@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { MessageCircle, User, Settings, Zap } from "lucide-react";
+import { MessageCircle, User, Settings, Plus, Users } from "lucide-react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -16,34 +16,34 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center h-16 gap-8">
             <Link
-              to="/"
+              to="/join-rooms"
               state={state}
               className={`flex flex-col items-center transition-all group ${
-                isActive("/") 
+                isActive("/join-rooms") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <MessageCircle 
+              <Users 
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
-                strokeWidth={isActive("/") ? 2.5 : 1.5} 
+                strokeWidth={isActive("/join-rooms") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Chat</span>
+              <span className="text-xs mt-1 font-semibold">Join</span>
             </Link>
             <Link
-              to="/quick-match"
+              to="/create-room"
               state={state}
               className={`flex flex-col items-center transition-all group ${
-                isActive("/quick-match") 
+                isActive("/create-room") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <Zap 
+              <Plus 
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
-                strokeWidth={isActive("/quick-match") ? 2.5 : 1.5} 
+                strokeWidth={isActive("/create-room") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Quick Match</span>
+              <span className="text-xs mt-1 font-semibold">Create</span>
             </Link>
             <Link
               to="/profile"
