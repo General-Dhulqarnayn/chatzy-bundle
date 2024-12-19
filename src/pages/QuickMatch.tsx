@@ -19,37 +19,57 @@ const QuickMatch = () => {
 
     try {
       setIsJoining(true);
+      console.log('Quick Match: Starting join process for user:', session.user.id);
 
       // First, check for an available room
-      const { data: rooms } = await supabase
+      const { data: rooms, error: roomError } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('subject_category', 'general')
-        .not('participants', 'is', null)
-        .limit(1);
+        .not('participants', 'is', null);
 
+      if (roomError) {
+        console.error('Quick Match: Error fetching rooms:', roomError);
+        throw roomError;
+      }
+
+      console.log('Quick Match: Found rooms:', rooms);
+
+      // Find a room with exactly one participant that isn't the current user
       const availableRoom = rooms?.find(room => 
         Array.isArray(room.participants) && 
         room.participants.length === 1 &&
         !room.participants.includes(session.user.id)
       );
 
+      console.log('Quick Match: Available room found:', availableRoom);
+
       if (availableRoom) {
         // Join existing room
+        console.log('Quick Match: Attempting to join room:', availableRoom.id);
+        const updatedParticipants = [...availableRoom.participants, session.user.id];
+        console.log('Quick Match: Updated participants will be:', updatedParticipants);
+
         const { error: updateError } = await supabase
           .from('chat_rooms')
           .update({ 
-            participants: [...availableRoom.participants, session.user.id] 
+            participants: updatedParticipants
           })
           .eq('id', availableRoom.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Quick Match: Error joining room:', updateError);
+          throw updateError;
+        }
         
+        console.log('Quick Match: Successfully joined room:', availableRoom.id);
         toast.success("Joined existing room!");
         navigate(`/chat/${availableRoom.id}`);
       } else {
         // Create new room
         const newRoomId = `quick-${Date.now()}`;
+        console.log('Quick Match: Creating new room:', newRoomId);
+
         const { error: createError } = await supabase
           .from('chat_rooms')
           .insert([{
@@ -58,13 +78,17 @@ const QuickMatch = () => {
             participants: [session.user.id]
           }]);
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Quick Match: Error creating room:', createError);
+          throw createError;
+        }
 
+        console.log('Quick Match: Successfully created room:', newRoomId);
         toast.success("Created new room!");
         navigate(`/chat/${newRoomId}`);
       }
     } catch (error) {
-      console.error('Error in quick match:', error);
+      console.error('Quick Match: Error in quick match process:', error);
       toast.error("Failed to join room. Please try again.");
     } finally {
       setIsJoining(false);
