@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { MessageCircle, User, Settings } from "lucide-react";
+import { MessageCircle, User, Settings, Zap } from "lucide-react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -29,6 +29,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 strokeWidth={isActive("/") ? 2.5 : 1.5} 
               />
               <span className="text-xs mt-1 font-semibold">Chat</span>
+            </Link>
+            <Link
+              to="/quick-match"
+              state={state}
+              className={`flex flex-col items-center transition-all group ${
+                isActive("/quick-match") 
+                  ? "text-primary scale-110" 
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <Zap 
+                className="h-6 w-6 group-hover:scale-110 transition-transform" 
+                strokeWidth={isActive("/quick-match") ? 2.5 : 1.5} 
+              />
+              <span className="text-xs mt-1 font-semibold">Quick Match</span>
             </Link>
             <Link
               to="/profile"
