@@ -12,23 +12,34 @@ export type Database = {
       chat_rooms: {
         Row: {
           created_at: string | null
+          host_id: string | null
           id: string
           participants: string[]
           subject_category: string
         }
         Insert: {
           created_at?: string | null
+          host_id?: string | null
           id: string
           participants: string[]
           subject_category?: string
         }
         Update: {
           created_at?: string | null
+          host_id?: string | null
           id?: string
           participants?: string[]
           subject_category?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_rooms_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {

@@ -11,6 +11,7 @@ interface Room {
   id: string;
   subject_category: string;
   participants: string[];
+  host_id: string;
 }
 
 const JoinRooms = () => {
@@ -32,10 +33,11 @@ const JoinRooms = () => {
 
         if (error) throw error;
 
-        // Filter rooms that aren't full
+        // Filter rooms that aren't full and have an active host
         const availableRooms = data.filter(room => {
           const participantCount = Array.isArray(room.participants) ? room.participants.length : 0;
-          return participantCount < 2;
+          const hasHost = room.participants.includes(room.host_id);
+          return participantCount < 2 && hasHost;
         });
 
         console.log('Available rooms:', availableRooms);
@@ -80,7 +82,7 @@ const JoinRooms = () => {
 
       const { data: room } = await supabase
         .from('chat_rooms')
-        .select('participants')
+        .select('participants, host_id')
         .eq('id', roomId)
         .single();
 
@@ -91,6 +93,12 @@ const JoinRooms = () => {
 
       const participants = Array.isArray(room.participants) ? room.participants : [];
       
+      // Check if host is still in the room
+      if (!participants.includes(room.host_id)) {
+        toast.error("This room is no longer active");
+        return;
+      }
+
       if (participants.length >= 2) {
         toast.error("Room is full");
         return;
@@ -160,6 +168,9 @@ const JoinRooms = () => {
                     <Badge variant="secondary" className="capitalize">
                       {room.subject_category}
                     </Badge>
+                    {room.host_id === session?.user?.id && (
+                      <Badge variant="default">Host</Badge>
+                    )}
                   </div>
                 </div>
                 <Button
