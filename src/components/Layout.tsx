@@ -45,6 +45,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               />
               <span className="text-xs mt-1 font-semibold">Create</span>
             </Link>
+            {inChat && (
+              <Link
+                to={location.pathname}
+                className={`flex flex-col items-center transition-all group text-primary scale-110`}
+              >
+                <MessageCircle 
+                  className="h-6 w-6 group-hover:scale-110 transition-transform" 
+                  strokeWidth={2.5} 
+                />
+                <span className="text-xs mt-1 font-semibold">Chat</span>
+              </Link>
+            )}
             <Link
               to="/profile"
               state={state}

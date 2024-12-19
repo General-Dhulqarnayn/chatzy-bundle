@@ -33,7 +33,7 @@ const Chat = () => {
       if (!room?.participants?.includes(session.user.id)) {
         console.log('User not in room');
         toast.error("You're not a participant in this room");
-        navigate('/');
+        navigate('/join-rooms');
         return;
       }
 
@@ -108,7 +108,7 @@ const Chat = () => {
           .eq('id', roomId);
 
         toast.success("Left the chat room");
-        navigate('/');
+        navigate('/join-rooms');
       }
     } catch (error) {
       console.error('Error leaving chat:', error);
