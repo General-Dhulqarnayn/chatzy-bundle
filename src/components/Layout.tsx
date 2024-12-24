@@ -6,19 +6,27 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const isActive = (path: string) => location.pathname === path;
   
-  // Extract roomId from chat URL if present
   const chatRoomId = location.pathname.startsWith('/chat/') 
     ? location.pathname.split('/chat/')[1]
     : localStorage.getItem('activeRoomId');
 
-  // Pass state to preserve the return path
   const state = chatRoomId ? { from: `/chat/${chatRoomId}` } : undefined;
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border md:top-0 md:bottom-auto">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center h-16 gap-8">
+          <div className="flex items-center justify-center h-16">
+            <h1 className="text-2xl font-bold text-primary">StudiBudi</h1>
+          </div>
+        </div>
+      </header>
+
+      {/* Floating Navigation Bar */}
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+        <div className="glass dark:glass-dark rounded-full px-6 py-4 shadow-lg">
+          <div className="flex items-center justify-center gap-8">
             <Link
               to="/join-rooms"
               state={state}
@@ -98,7 +106,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </div>
       </nav>
-      <main className="container mx-auto px-4 pb-20 pt-4 md:pb-4 md:pt-20">
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 pb-32 pt-24">
         <div className="animate-in">{children}</div>
       </main>
     </div>
