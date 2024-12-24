@@ -10,12 +10,12 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
 
   const handleSupportContact = () => {
-    window.location.href = "mailto:support@example.com";
+    window.location.href = "mailto:info@studibudi.com";
     toast.success("Opening your email client...");
   };
 
   const handleFeatureRequest = () => {
-    window.location.href = "mailto:features@example.com?subject=Feature%20Request";
+    window.location.href = "mailto:info@studibudi.com?subject=Feature%20Request";
     toast.success("Opening your email client...");
   };
 
