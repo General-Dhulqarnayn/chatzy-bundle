@@ -11,28 +11,31 @@ import Chat from "./pages/Chat";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRooms from "./pages/JoinRooms";
 import { AuthProvider } from "./components/AuthProvider";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/chat/:roomId" element={<Chat />} />
-              <Route path="/create-room" element={<CreateRoom />} />
-              <Route path="/join-rooms" element={<JoinRooms />} />
-            </Routes>
-          </Layout>
-        </AuthProvider>
-      </BrowserRouter>
+      <ThemeProvider defaultTheme="light" storageKey="app-theme">
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/chat/:roomId" element={<Chat />} />
+                <Route path="/create-room" element={<CreateRoom />} />
+                <Route path="/join-rooms" element={<JoinRooms />} />
+              </Routes>
+            </Layout>
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
