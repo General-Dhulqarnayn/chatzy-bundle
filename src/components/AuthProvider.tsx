@@ -41,6 +41,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           console.log("Initial session:", data.session);
           setSession(data.session);
+          
+          // If user is signed in and on the profile or root page, redirect to join rooms
+          if (data.session && (location.pathname === "/profile" || location.pathname === "/")) {
+            navigate("/join-rooms");
+          }
         }
         
         // Only redirect to profile if trying to access protected routes without auth
@@ -65,6 +70,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (event === 'TOKEN_REFRESHED') {
         console.log('Token was refreshed successfully');
+      }
+      
+      if (event === 'SIGNED_IN') {
+        setSession(currentSession);
+        navigate("/join-rooms");
       }
       
       if (event === 'SIGNED_OUT') {
