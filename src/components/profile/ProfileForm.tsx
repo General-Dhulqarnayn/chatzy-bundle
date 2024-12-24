@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,6 +29,7 @@ const formSchema = z.object({
 const ProfileForm = () => {
   const { session } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,6 +39,37 @@ const ProfileForm = () => {
       age: undefined,
     },
   });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!session?.user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("username, gender, age")
+          .eq("id", session.user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          form.reset({
+            username: data.username || "",
+            gender: data.gender as "Male" | "Female" | undefined,
+            age: data.age || undefined,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        toast.error("Failed to load profile");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [session, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!session?.user) return;
@@ -63,6 +95,14 @@ const ProfileForm = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -90,7 +130,7 @@ const ProfileForm = () => {
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
