@@ -1,18 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Users } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-
-interface Room {
-  id: string;
-  subject_category: string;
-  participants: string[];
-  host_id: string;
-}
+import { Room } from "@/types/room";
+import RoomsList from "@/components/rooms/RoomsList";
 
 const JoinRooms = () => {
   const { session } = useAuth();
@@ -134,7 +127,7 @@ const JoinRooms = () => {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto py-8">
+    <div className="container max-w-2xl mx-auto py-8 px-4">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold tracking-tight slide-up">
           Join a Chat Room
@@ -148,52 +141,12 @@ const JoinRooms = () => {
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
-      ) : rooms.length > 0 ? (
-        <div className="space-y-4">
-          {rooms.map((room) => (
-            <div
-              key={room.id}
-              className="p-4 border rounded-lg hover:border-primary transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold capitalize">
-                    {room.subject_category} Room
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {room.participants.length}/2 participants
-                    </span>
-                    <Badge variant="secondary" className="capitalize">
-                      {room.subject_category}
-                    </Badge>
-                    {room.host_id === session?.user?.id && (
-                      <Badge variant="default">Host</Badge>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={() => handleJoinRoom(room.id)}
-                  disabled={joiningRoom === room.id}
-                >
-                  {joiningRoom === room.id ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Joining...
-                    </>
-                  ) : (
-                    "Join Room"
-                  )}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="text-center text-muted-foreground">
-          No rooms available. Try creating a new room!
-        </div>
+        <RoomsList
+          rooms={rooms}
+          joiningRoom={joiningRoom}
+          onJoinRoom={handleJoinRoom}
+        />
       )}
     </div>
   );
