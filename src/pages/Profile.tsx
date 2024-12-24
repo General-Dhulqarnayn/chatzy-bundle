@@ -1,13 +1,17 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/AuthProvider";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import ProfileForm from "@/components/profile/ProfileForm";
 
 const Profile = () => {
   const { session, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -17,6 +21,7 @@ const Profile = () => {
       });
     } else {
       toast.success("Signed out successfully");
+      navigate("/");
     }
   };
 
@@ -55,13 +60,16 @@ const Profile = () => {
   return (
     <div className="container max-w-md mx-auto pt-8">
       <Card className="p-6 glass">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-bold">Profile</h2>
             <p className="text-muted-foreground">
               Logged in as: {session.user.email}
             </p>
           </div>
+          
+          <ProfileForm />
+
           <Button
             variant="destructive"
             className="w-full"
