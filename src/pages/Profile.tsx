@@ -27,13 +27,19 @@ const Profile = () => {
       if (!session?.user) return;
 
       try {
+        console.log("Fetching profile data for user:", session.user.id);
         const { data, error } = await supabase
           .from("profiles")
           .select("username, gender, age")
           .eq("id", session.user.id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error loading profile:", error);
+          throw error;
+        }
+
+        console.log("Profile data received:", data);
         setProfileData(data);
       } catch (error) {
         console.error("Error loading profile:", error);
