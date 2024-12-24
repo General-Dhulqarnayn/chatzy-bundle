@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -13,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuthOperations } from "@/hooks/useAuthOperations";
 
 const formSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -24,6 +24,7 @@ const Profile = () => {
   const { session, isLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const { signOut } = useAuthOperations();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -205,16 +206,7 @@ const Profile = () => {
           <Button
             variant="destructive"
             className="w-full"
-            onClick={async () => {
-              const { error } = await supabase.auth.signOut();
-              if (error) {
-                toast.error("Error signing out", {
-                  description: error.message,
-                });
-              } else {
-                toast.success("Signed out successfully");
-              }
-            }}
+            onClick={signOut}
           >
             Sign Out
           </Button>
