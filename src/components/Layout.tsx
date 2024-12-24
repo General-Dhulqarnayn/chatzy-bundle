@@ -25,12 +25,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Floating Navigation Bar */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-        <div className="glass dark:glass-dark rounded-full px-6 py-4 shadow-lg">
-          <div className="flex items-center justify-center gap-8">
+        <div className="glass dark:glass-dark rounded-full px-4 py-3 shadow-lg">
+          <div className="flex items-center justify-center gap-6">
             <Link
               to="/join-rooms"
               state={state}
-              className={`flex flex-col items-center transition-all group ${
+              className={`transition-all group ${
                 isActive("/join-rooms") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
@@ -40,12 +40,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
                 strokeWidth={isActive("/join-rooms") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Join</span>
             </Link>
             <Link
               to="/create-room"
               state={state}
-              className={`flex flex-col items-center transition-all group ${
+              className={`transition-all group ${
                 isActive("/create-room") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
@@ -55,12 +54,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
                 strokeWidth={isActive("/create-room") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Create</span>
             </Link>
             {chatRoomId && (
               <Link
                 to={`/chat/${chatRoomId}`}
-                className={`flex flex-col items-center transition-all group ${
+                className={`transition-all group ${
                   location.pathname === `/chat/${chatRoomId}`
                     ? "text-primary scale-110"
                     : "text-muted-foreground hover:text-primary"
@@ -70,13 +68,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   className="h-6 w-6 group-hover:scale-110 transition-transform" 
                   strokeWidth={location.pathname === `/chat/${chatRoomId}` ? 2.5 : 1.5} 
                 />
-                <span className="text-xs mt-1 font-semibold">Chat</span>
               </Link>
             )}
             <Link
               to="/profile"
               state={state}
-              className={`flex flex-col items-center transition-all group ${
+              className={`transition-all group ${
                 isActive("/profile") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
@@ -86,12 +83,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
                 strokeWidth={isActive("/profile") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Profile</span>
             </Link>
             <Link
               to="/settings"
               state={state}
-              className={`flex flex-col items-center transition-all group ${
+              className={`transition-all group ${
                 isActive("/settings") 
                   ? "text-primary scale-110" 
                   : "text-muted-foreground hover:text-primary"
@@ -101,7 +97,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 className="h-6 w-6 group-hover:scale-110 transition-transform" 
                 strokeWidth={isActive("/settings") ? 2.5 : 1.5} 
               />
-              <span className="text-xs mt-1 font-semibold">Settings</span>
             </Link>
           </div>
         </div>
