@@ -13,7 +13,10 @@ const Chat = () => {
   const { roomId } = useParams();
   const { session } = useAuth();
   const navigate = useNavigate();
-  const [otherUser, setOtherUser] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
+  const [otherUser, setOtherUser] = useState<{ 
+    username: string | null; 
+    avatar_url: string | null 
+  } | null>(null);
   const [isRoomReady, setIsRoomReady] = useState(false);
   const { messages, sendMessage } = useMessages(roomId!);
   
@@ -60,11 +63,15 @@ const Chat = () => {
         if (otherUserId) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('username, avatar_url')
+            .select('avatar_url')
             .eq('id', otherUserId)
             .single();
           
-          setOtherUser(profile);
+          // Set a default username since we don't have it in the database anymore
+          setOtherUser({
+            username: 'Anonymous User',
+            avatar_url: profile?.avatar_url || null
+          });
         }
       }
     };
