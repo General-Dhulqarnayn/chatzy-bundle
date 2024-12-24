@@ -1,42 +1,24 @@
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useAuthOperations } from "@/hooks/useAuthOperations";
-import { AuthUI } from "@/components/profile/AuthUI";
-import { ProfileForm } from "@/components/profile/ProfileForm";
-import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
   const { session, isLoading } = useAuth();
-  const [profile, setProfile] = useState<any>(null);
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const { signOut } = useAuthOperations();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (session?.user?.id) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if (error) {
-          toast.error("Error fetching profile");
-          return;
-        }
-
-        if (data) {
-          setProfile(data);
-          setIsProfileComplete(!!data.gender && !!data.age);
-        }
-      }
-    };
-
-    fetchProfile();
-  }, [session?.user?.id]);
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Error signing out", {
+        description: error.message,
+      });
+    } else {
+      toast.success("Signed out successfully");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -47,33 +29,43 @@ const Profile = () => {
   }
 
   if (!session) {
-    return <AuthUI />;
+    return (
+      <div className="container max-w-md mx-auto pt-8">
+        <Card className="p-6 glass">
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: 'hsl(var(--primary))',
+                    brandAccent: 'hsl(var(--primary))',
+                  },
+                },
+              },
+            }}
+            providers={[]}
+          />
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="container max-w-md mx-auto pt-8">
       <Card className="p-6 glass">
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="text-center">
             <h2 className="text-2xl font-bold">Profile</h2>
             <p className="text-muted-foreground">
-              {isProfileComplete 
-                ? "You can update your username below"
-                : "Complete your profile to continue"}
+              Logged in as: {session.user.email}
             </p>
           </div>
-
-          <ProfileForm
-            initialData={profile}
-            userId={session.user.id}
-            isProfileComplete={isProfileComplete}
-            onProfileUpdate={() => setIsProfileComplete(true)}
-          />
-
           <Button
             variant="destructive"
             className="w-full"
-            onClick={signOut}
+            onClick={handleSignOut}
           >
             Sign Out
           </Button>
