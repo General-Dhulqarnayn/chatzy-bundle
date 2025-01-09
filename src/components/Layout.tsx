@@ -26,7 +26,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <ArrowLeft className="h-6 w-6" />
               </Link>
             ) : (
-              <div className="w-6" /> {/* Spacer for alignment */}
+              /* Spacer for alignment */
+              <div className="w-6" />
             )}
             <h1 className="text-2xl font-bold text-primary">StudiBudi</h1>
             <div className="w-6" /> {/* Spacer for alignment */}
