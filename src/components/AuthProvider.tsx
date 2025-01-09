@@ -42,8 +42,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("Initial session:", data.session);
           setSession(data.session);
           
-          // If user is signed in and on the profile or root page, redirect to join rooms
-          if (data.session && (location.pathname === "/profile" || location.pathname === "/")) {
+          // Only redirect to join rooms if user is on root page
+          if (data.session && location.pathname === "/") {
             navigate("/join-rooms");
           }
         }
