@@ -35,15 +35,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (error) {
           console.error("Error getting session:", error);
-          // Clear any invalid session state
           await supabase.auth.signOut();
           setSession(null);
         } else {
           console.log("Initial session:", data.session);
           setSession(data.session);
           
-          // If user is signed in and on the profile or root page, redirect to join rooms
-          if (data.session && (location.pathname === "/profile" || location.pathname === "/")) {
+          // Only redirect to join rooms if user is signed in and on the root page
+          if (data.session && location.pathname === "/") {
             navigate("/join-rooms");
           }
         }
@@ -78,12 +77,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       if (event === 'SIGNED_OUT') {
-        // Clear any remaining session data
         setSession(null);
-        if (location.pathname !== "/" && location.pathname !== "/profile") {
-          toast("You have been signed out");
-          navigate("/profile");
-        }
+        navigate("/profile");
       } else {
         setSession(currentSession);
       }
