@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Session } from "@supabase/supabase-js";
+import { Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,6 +19,19 @@ export const useAuth = () => {
   return context;
 };
 
+const getErrorMessage = (error: AuthError) => {
+  switch (error.message) {
+    case 'Invalid login credentials':
+      return 'Invalid email or password. Please check your credentials and try again.';
+    case 'Email not confirmed':
+      return 'Please verify your email address before signing in.';
+    case 'User not found':
+      return 'No user found with these credentials.';
+    default:
+      return error.message;
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (error) {
           console.error("Error getting session:", error);
+          toast.error(getErrorMessage(error));
           // Clear any invalid session state
           await supabase.auth.signOut();
           setSession(null);
@@ -54,6 +68,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (err) {
         console.error("Error in auth setup:", err);
+        if (err instanceof AuthError) {
+          toast.error(getErrorMessage(err));
+        }
         setSession(null);
       } finally {
         setIsLoading(false);
@@ -84,8 +101,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           toast("You have been signed out");
           navigate("/profile");
         }
-      } else {
+      } else if (event === 'USER_UPDATED') {
         setSession(currentSession);
+      } else if (event === 'AUTH_ERROR') {
+        toast.error("Authentication error occurred");
       }
       
       setIsLoading(false);

@@ -68,9 +68,6 @@ const Profile = () => {
               },
             }}
             providers={[]}
-            onError={(error) => {
-              setAuthError(getErrorMessage(error));
-            }}
           />
         </Card>
       </div>
