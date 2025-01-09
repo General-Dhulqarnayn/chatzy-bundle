@@ -5,9 +5,36 @@ import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState, useEffect } from "react";
+import { AuthError } from "@supabase/supabase-js";
 
 const Profile = () => {
   const { session, isLoading } = useAuth();
+  const [authError, setAuthError] = useState<string>("");
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed in Profile:", event, session);
+      
+      if (event === 'SIGNED_IN') {
+        setAuthError("");
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        setAuthError("");
+      }
+      
+      if (event === 'USER_UPDATED') {
+        const { error } = await supabase.auth.getSession();
+        if (error) {
+          setAuthError(getErrorMessage(error));
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -17,6 +44,19 @@ const Profile = () => {
       });
     } else {
       toast.success("Signed out successfully");
+    }
+  };
+
+  const getErrorMessage = (error: AuthError) => {
+    switch (error.message) {
+      case 'Invalid login credentials':
+        return 'Invalid email or password. Please check your credentials and try again.';
+      case 'Email not confirmed':
+        return 'Please verify your email address before signing in.';
+      case 'User not found':
+        return 'No user found with these credentials.';
+      default:
+        return error.message;
     }
   };
 
@@ -32,6 +72,11 @@ const Profile = () => {
     return (
       <div className="container max-w-md mx-auto pt-8">
         <Card className="p-6 glass">
+          {authError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          )}
           <Auth
             supabaseClient={supabase}
             appearance={{
