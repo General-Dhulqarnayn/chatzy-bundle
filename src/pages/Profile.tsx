@@ -6,35 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AuthError } from "@supabase/supabase-js";
 
 const Profile = () => {
   const { session, isLoading } = useAuth();
   const [authError, setAuthError] = useState<string>("");
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed in Profile:", event, session);
-      
-      if (event === 'SIGNED_IN') {
-        setAuthError("");
-      }
-      
-      if (event === 'SIGNED_OUT') {
-        setAuthError("");
-      }
-      
-      if (event === 'USER_UPDATED') {
-        const { error } = await supabase.auth.getSession();
-        if (error) {
-          setAuthError(getErrorMessage(error));
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -91,6 +68,9 @@ const Profile = () => {
               },
             }}
             providers={[]}
+            onError={(error) => {
+              setAuthError(getErrorMessage(error));
+            }}
           />
         </Card>
       </div>
