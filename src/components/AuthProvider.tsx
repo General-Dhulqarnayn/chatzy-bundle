@@ -103,8 +103,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else if (event === 'USER_UPDATED') {
         setSession(currentSession);
-      } else if (event === 'AUTH_ERROR') {
-        toast.error("Authentication error occurred");
+        if (currentSession?.user?.aud === 'authenticated') {
+          toast.error("Authentication error occurred");
+        }
       }
       
       setIsLoading(false);
